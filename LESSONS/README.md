@@ -1,3 +1,3 @@
-# A2NoSlotMIDI - latest DSK images
+# A2NoSlotMIDI - lesson plans
 
 To be populated at Kansasfest
