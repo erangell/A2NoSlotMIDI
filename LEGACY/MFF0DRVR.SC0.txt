@@ -1,0 +1,226 @@
+;MFF0DRVR.SC0
+;
+;-------------------
+;MAINLINE CODE
+;-------------------
+AUXSETUP LDA #>ENTRYPTS      ;MOVE WHOLE PROGRAM TO AUX
+         STA SRCMAINL
+         STA TGTAUXL
+         LDA #<ENTRYPTS
+         STA SRCMAINH
+         STA TGTAUXH
+         LDA #>EOF
+         STA ENDMAINL
+         LDA #<EOF
+         STA ENDMAINH
+         LDA #$01
+         STA TOAUX
+         JSR DOAUXMV
+         RTS
+;
+PLAYMAIN JMP PLAYIT1
+PLAYAUX  LDA #>PLAYSTRT      ;MOVE PARM AREA TO AUX
+         STA SRCMAINL
+         STA TGTAUXL
+         LDA #<PLAYSTRT
+         STA SRCMAINH
+         STA TGTAUXH
+         LDA #>AUXSETUP      ;ALSO MOVE ALL DATA VARIABLES
+         STA ENDMAINL
+         LDA #<AUXSETUP
+         STA ENDMAINH
+         LDA #$01
+         STA TOAUX
+         JSR DOAUXMV
+;
+         LDA #>AUXCODE       ;TRANSFER TO AUX PROGRAM
+         STA XFERADRL
+         LDA #<AUXCODE
+         STA XFERADRH
+         LDA #$01
+         STA XFTOAUX
+         LDA #$00
+         STA USEAUXZP
+         JMP DOXFER
+AUXRTN   RTS
+;                            ;TRANSFER BACK TO MAIN MEMORY PROGRAM
+AUXCODE  JSR PLAYIT1         ;PLAY THE AUX BUFFER
+         LDA #>PLAYSTRT      ;MOVE PARM AREA BACK TO MAIN
+         STA SRCMAINL
+         STA TGTAUXL
+         LDA #<PLAYSTRT
+         STA SRCMAINH
+         STA TGTAUXH
+         LDA #>AUXSETUP
+         STA ENDMAINL
+         LDA #<AUXSETUP
+         STA ENDMAINH
+         LDA #$00
+         STA TOAUX
+         JSR DOAUXMV
+;
+         LDA #>AUXRTN       ;TRANSFER BACK TO MAIN PROGRAM
+         STA XFERADRL
+         LDA #<AUXRTN
+         STA XFERADRH
+         LDA #$00
+         STA XFTOAUX
+         LDA #$00
+         STA USEAUXZP
+         JMP DOXFER
+;
+DOAUXMV  LDA SRCMAINL
+         STA $3C
+         LDA SRCMAINH
+         STA $3D
+         LDA ENDMAINL
+         STA $3E
+         LDA ENDMAINH
+         STA $3F
+         LDA TGTAUXL
+         STA $42
+         LDA TGTAUXH
+         STA $43
+         LDA TOAUX
+         BNE AUXMOVE1
+         CLC
+         JMP AUXMOVE
+AUXMOVE1 SEC
+         JMP AUXMOVE         
+;
+DOXFER   LDA XFERADRL
+         STA $3ED
+         LDA XFERADRH
+         STA $3EE
+         LDA XFTOAUX
+         BNE DOXFER1
+         CLC
+         JMP DOXFER2
+DOXFER1  SEC
+DOXFER2  LDA USEAUXZP
+         BNE DOXFER3
+         CLV
+         JMP DOXFER4
+DOXFER3  BIT MONRTS ;SET OVERFLOW
+DOXFER4  JMP AUXXFER
+;=============================
+PLAYIT1  LDA PLAYSTRT        ;INITIALIZE PTR TO BEGINNING OF AREA
+         STA PLAYPTR
+         LDA PLAYSTRT+1
+         STA PLAYPTR+1
+         LDA KARALOOK        ;12/17/95-KARALOOK LOGIC
+         BEQ PLAYLOOP
+         LDA #$8D
+         JSR COUT
+         JSR KARASCAN
+PLAYLOOP LDY #$00            ;READ 1 BYTE
+         LDA (PLAYPTR),Y
+         STA INBYTE
+         JSR PRCSBYTE
+         LDA ENDOFTRK
+         BEQ PLAYLOO1
+         RTS
+PLAYLOO1 JSR CHKKBD
+         LDA ENDOFTRK
+         BEQ INCPTR
+         RTS
+INCPTR   INC PLAYPTR
+         BNE INCPTR2
+         INC PLAYPTR+1
+INCPTR2  LDA PLAYPTR
+         CMP PLAYSTOP
+         BNE PLAYLOOP
+         LDA PLAYPTR+1
+         CMP PLAYSTOP+1
+         BNE PLAYLOOP
+         RTS
+;-------
+; CHKKBD - MAY SET ENDOFTRK
+;-------
+CHKKBD   LDA $C000
+         BPL NOKEY1
+         LDA $C010
+         AND #$7F
+         CMP #$20
+         BNE CHKESC
+         LDA #$01
+         STA ENDOFTRK
+NOKEY1   RTS
+CHKESC   CMP #$1B
+         BNE CHKFLAT
+WAITKEY  LDA #$00
+         STA PAUSEFLG
+WAITKEY1 LDA $C000
+         BPL WAITKEY1
+         LDA $C010
+         AND #$7F
+         CMP #$1B
+         BNE ESCDONE
+         INC PAUSEFLG
+ESCDONE  RTS
+CHKFLAT  CMP #$46            ;'F'-CHANGE UCS<->LCF
+         BNE TESTTMPO
+         LDA DISPMODE
+         EOR #$01
+         STA DISPMODE
+         RTS
+TESTTMPO CMP #$54            ;'T'-TEMPO CHGS
+         BNE CHKDRUM
+         LDA DOTMPOCG
+         EOR #$01
+         STA DOTMPOCG
+         RTS
+CHKDRUM  CMP #$44            ;'D'-MASK DRUMS
+         BNE CHKLEFT
+         DEC MASKDRUM
+         LDA MASKDRUM
+         CMP #$FE
+         BNE DRUMDONE
+         LDA #$01
+         STA MASKDRUM
+DRUMDONE RTS
+CHKLEFT  CMP #$08
+         BNE CHKRIGHT
+         DEC SPEED
+         LDA SPEED
+         BMI LEFTBAD
+         BEQ LEFTBAD
+         DEC SPEEDINC
+         JSR SPEEDDEC
+         JSR METRPOKE
+         LDA PRNTSPED
+         BEQ LEFTDONE 
+         LDA #$A0
+         JSR COUT
+         LDA SPEED
+         JSR PRINTHEX
+         LDA #$A0
+         JSR COUT
+LEFTDONE RTS
+LEFTBAD  INC SPEED
+         RTS
+CHKRIGHT CMP #$15
+         BNE NOKEY
+         INC SPEED
+         LDA SPEED
+         BMI RIGHTBAD
+         BEQ RIGHTBAD
+         INC SPEEDINC
+         JSR SPEEDDEC
+         JSR METRPOKE
+         LDA PRNTSPED
+         BEQ NOKEY
+         LDA #$A0
+         JSR COUT
+         LDA SPEED
+         JSR PRINTHEX
+         LDA #$A0
+         JSR COUT
+NOKEY    RTS
+RIGHTBAD DEC SPEED
+         RTS
+;
+;=========
+; PRCSBYTE - MAY SET ENDOFTRK
+;=========
+         CHN MFF0DRVR.SC1

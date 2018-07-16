@@ -1,0 +1,79 @@
+;*** POKE80
+;*** STORES ANY BYTE DIRECTLY ON 80 COLUMN SCREEN
+;*** USING PROTOCOL DESCRIBED IN "INSIDE THE APPLE //E"
+;--------
+; POKE80 
+;--------
+; A = CHARACTER TO POKE ON SCREEN
+; X = X COORDINATE (0-79)
+; Y = Y COORDINATE (0-23)
+;--------
+POKE80   CPX #80             ;VALIDATE X,Y COORDINATES
+         BCC POKE80A
+         CPY #24
+         BCC POKE80A
+         RTS
+POKE80A  PHP                 ;SAVE INTERRUPT STATUS
+         PHA                 ;SAVE USER'S DATA BYTE
+         STA SAVEA
+         STX SAVEX
+         STY SAVEY
+         SEI                 ;DISABLE INTERRUPTS
+         LDA $C018
+         STA STAT80ST        ;SAVE STATUS OF 80STORE AND PAGE2 FLAGS
+         LDA $C01C
+         STA STATPAG2
+         STA $C001           ;TURN 80STORE ON TO USE PAGE2 TO SWITCH MAIN->AUX
+         LDA $28
+         STA SAVEBASL        ;SAVE CURRENT SCREEN BASE ADDRESS 
+         LDA $29
+         STA SAVEBASH
+         TYA                 ;MULTIPLY Y BY 2 FOR LOOKUP IN BASE TABLE
+         ASL A
+         TAY
+         LDA BASTABLE,Y      ;GET LINE ADDRESS AND STORE IT IN ZP VECTOR
+         STA $28
+         INY
+         LDA BASTABLE,Y
+         STA $29
+         TXA                 ;DIVIDE X BY 2 TO GET OFFSET FROM LINE BASE
+         LSR A
+         TAY                 ;PUT IT IN Y FOR THE INDIRECT ADDRESSING LATER
+         BCC EVENCOL         ;CHECK CARRY TO DETERMINE IF X WAS ODD OR EVEN
+         STA $C054           ;ODD - TURN PAGE 2 OFF
+         BCS STORBYTE
+EVENCOL  STA $C055           ;EVEN - TURN PAGE 2 ON
+STORBYTE PLA
+         STA ($28),Y         ;POKE THE CHARACTER ON THE SCREEN
+         LDA STAT80ST        
+         BPL OFF80ST
+         STA $C001           ;80STOREON
+         BMI RSTRPAG2
+OFF80ST  STA $C000           ;80STOREOFF
+RSTRPAG2 LDA STATPAG2
+         BPL OFFPAG2
+         STA $C055           ;PAGE2ON
+         BMI RSTRBASE
+OFFPAG2  STA $C054           ;PAGE2OFF
+RSTRBASE LDA SAVEBASL        ;RESTORE ZP BASE VECTOR
+         STA $28
+         LDA SAVEBASH
+         STA $29
+         LDX SAVEX
+         LDY SAVEY
+         LDA SAVEA
+         PLP                 ;RESTORE INTERRUPT STATUS
+         RTS
+;
+STAT80ST DFB $00
+STATPAG2 DFB $00
+SAVEBASL DFB $00
+SAVEBASH DFB $00
+SAVEA    DFB $00
+SAVEX    DFB $00
+SAVEY    DFB $00
+BASTABLE DFB $00,$04,$80,$04,$00,$05,$80,$05,$00,$06,$80,$06,$00,$07,$80,$07
+         DFB $28,$04,$A8,$04,$28,$05,$A8,$05,$28,$06,$A8,$06,$28,$07,$A8,$07
+         DFB $50,$04,$D0,$04,$50,$05,$D0,$05,$50,$06,$D0,$06,$50,$07,$D0,$07
+;
+         CHN MFF0DRVR.SC4

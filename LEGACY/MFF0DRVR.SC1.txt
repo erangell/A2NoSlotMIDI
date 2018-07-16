@@ -1,0 +1,335 @@
+;MFF0DRVR.SC1
+;-------
+PRCSBYTE LDA PHASE
+         CMP #DELTA0
+         BNE PHDELT1
+         LDA #$00
+         STA DELTATIM
+         STA DELTATIM+1
+         STA DELTATIM+2
+         STA DELTATIM+3
+         LDA INBYTE
+         STA DELTATIM
+         BEQ DELTAEQ0        ;GET DELTA TIME
+         BPL DELTA7F
+         LDA #DELTA1         ;IF >127 - MORE TO FETCH
+         STA PHASE
+         RTS
+DELTAEQ0 LDA #GETINST        ;IF 0 - WILL GET INSTRUCTION NEXT TIME
+         STA PHASE
+         RTS
+DELTA7F  JSR COUNT
+         LDA #GETINST       ;IF <=127 - DELAY, THEN GET INSTRUCTION NEXT TIME
+         STA PHASE
+         RTS
+;                            ;NEED TO CONVERT DELTA TIME BYTES TO COUNTER
+COUNT    LDA DELTATIM
+         STA DELTACTR
+         LDA #$00
+         STA DELTACTR+1
+         LDA DELTATIM+1      ;USE ONLY FIRST 2 BYTES OF DELTATIM
+         BEQ DOCOUNT         
+         AND #$7F            ;IF NON-ZERO HI BYTE, MOVE LO BIT
+         LSR A
+         STA DELTACTR+1
+         BCC DOCOUNT
+         LDA DELTACTR
+         ORA #$80            ;TO HI BIT OF LO BYTE
+         STA DELTACTR
+DOCOUNT  DEC DELTACTR
+         LDA DELTACTR
+         CMP #$FF
+         BNE DECR1
+         DEC DELTACTR+1
+DECR1    LDA DELTACTR+1
+         CMP #$FF
+         BEQ DONECNT
+         LDA SPEED
+         JSR MONWAIT
+         CLV
+         BVC DOCOUNT
+DONECNT  RTS
+;
+PHDELT1  CMP #DELTA1
+         BNE PHDELT2
+         LDA DELTATIM
+         STA DELTATIM+1
+         LDA INBYTE
+         STA DELTATIM
+         BPL DELT1A
+         LDA #DELTA2
+         STA PHASE
+         RTS
+DELT1A   JSR COUNT
+         LDA #GETINST
+         STA PHASE
+         RTS
+;-------
+PHDELT2  CMP #DELTA2
+         BNE PHDELT3
+         LDA DELTATIM+1
+         STA DELTATIM+2
+         LDA DELTATIM
+         STA DELTATIM+1
+         LDA INBYTE
+         STA DELTATIM
+         BPL DELT2A
+         LDA #DELTA3
+         STA PHASE
+         RTS
+DELT2A   JSR COUNT
+         LDA #GETINST
+         STA PHASE
+         RTS
+;-------
+PHDELT3  CMP #DELTA3
+         BNE PHINST
+         LDA DELTATIM+2
+         STA DELTATIM+3
+         LDA DELTATIM+1
+         STA DELTATIM+2
+         LDA DELTATIM
+         STA DELTATIM+1
+         LDA INBYTE
+         STA DELTATIM
+         BPL DELT3A
+         LDA PLAYPTR+1
+         JSR PRINTHEX
+         LDA PLAYPTR
+         JSR PRINTHEX
+         BRK
+DELT3A   JSR COUNT
+         LDA #GETINST
+         STA PHASE
+         RTS
+;-------
+PHINST   CMP #GETINST
+         BEQ PHINST0
+         JMP PHDATA3
+PHINST0  LDA PAUSEFLG        ;12/8/95-STEP THRU EVENTS WITH ESC
+         BEQ PHINST1
+         JSR WAITKEY
+PHINST1  LDA INBYTE
+         BPL RUNNING
+;
+         CMP #$F0
+         BCS CHKF0
+;
+         STA LASTSTAT
+         STA XMITSTS
+         CMP #$E0
+         BCS TWOBYTES
+         CMP #$C0
+         BCC TWOBYTES
+;
+         LDA #1
+         STA DBYTES
+         LDA #DATA1
+         STA PHASE
+         RTS
+;
+TWOBYTES LDA #2
+         STA DBYTES
+         LDA #DATA2
+         STA PHASE
+         RTS
+;
+CHKF0    BNE CHKF7
+         LDA #SYSX0
+         STA PHASE
+         LDA #$F0
+         JSR XMITBYTE
+         RTS
+;
+XMITBYTE JSR XMITONE ;ANNUNCIATOR MIDI DRIVER
+         RTS
+;
+CHKF7    CMP #$F7
+         BNE CHKFF
+         LDA #SYSX0
+         STA PHASE
+         RTS
+;
+CHKFF    CMP #$FF
+         BNE INVAL
+         LDA #META0
+         STA PHASE
+         RTS
+;
+INVAL    BRK
+;
+RUNNING  LDA LASTSTAT
+         STA XMITSTS
+         LDA INBYTE
+         STA XMITBYT1
+         LDA #$FF
+         STA XMITBYT2
+         LDA DBYTES
+         CMP #1
+         BEQ SENDMSG
+         LDA #DATA3
+         STA PHASE
+         RTS
+;
+PHDATA3  CMP #DATA3
+         BNE PHDATA2
+         LDA INBYTE
+         STA XMITBYT2
+         LDA #$FF
+         STA XMITBYT3
+         JMP SENDMSG
+;
+PHDATA2  CMP #DATA2
+         BNE PHDATA1
+         LDA INBYTE
+         STA XMITBYT1
+         LDA #DATA2B
+         STA PHASE
+         RTS
+;
+PHDATA1  CMP #DATA1
+         BNE PHDATA2B
+         LDA INBYTE
+         STA XMITBYT1
+         LDA #$FF
+         STA XMITBYT2
+         JMP SENDMSG
+;
+PHDATA2B CMP #DATA2B
+         BNE PHSYSX
+         LDA INBYTE
+         STA XMITBYT2
+         LDA #$FF
+         STA XMITBYT3
+         JMP SENDMSG
+;
+SENDMSG  LDX #$01 
+SEND0    LDA XMITMSG,X
+         CMP #$FF
+         BEQ SEND2
+         JSR XMITONE ;ANNUNCIATOR MIDI DRIVER
+         INX
+         BNE SEND0
+SEND2    LDA PIANOSCR        ;ADDED 12/9/95-PIANO SCREEN OPTION
+         BEQ SENDEXIT
+         LDA XMITSTS
+         LDX XMITBYT1
+         LDY XMITBYT2
+         JSR MIDIPOKE
+SENDEXIT LDA #DELTA0
+         STA PHASE
+         RTS
+;
+PHSYSX   CMP #SYSX0
+         BNE PHSYSX1
+         LDA INBYTE
+         STA SYSXLEN
+         BPL GOODSLEN
+         LDA PLAYPTR+1
+         JSR PRINTHEX
+         LDA PLAYPTR
+         JSR PRINTHEX
+         BRK                 ;SYSX OVER 127 BYTES NOT SUPPORTED
+GOODSLEN LDA #SYSX1
+         STA PHASE
+         RTS
+PHSYSX1  CMP #SYSX1
+         BNE PHMETA0
+         LDA INBYTE
+         JSR XMITBYTE
+         DEC SYSXLEN
+         LDA SYSXLEN
+         BNE MORESYSX
+         LDA #DELTA0
+         STA PHASE
+MORESYSX RTS
+;--------
+PHMETA0  CMP #META0
+         BNE PHMETA1
+;
+         LDA #$00
+         STA TEXTEVT
+         LDA INBYTE
+         CMP #$2F
+         BNE CHKTEXT
+         LDA #$01
+         STA ENDOFTRK
+         RTS
+;
+CHKTEXT  CMP #$0F
+         BCS CHKTMPO
+         LDA #$01
+         STA TEXTEVT
+         LDA #META1
+         STA PHASE
+         RTS
+;
+CHKTMPO  CMP #$51
+         BNE CHKKYSG
+         LDA #TEMPO1
+         STA PHASE
+         RTS
+;
+CHKKYSG  CMP #$59
+         BNE OTHER
+         LDA #KEYSIG1
+         STA PHASE
+         RTS
+;
+OTHER    LDA #META1
+         STA PHASE
+         RTS
+;
+PHMETA1  CMP #META1
+         BNE PHMETA2
+STORMLEN LDA INBYTE
+         STA METALEN
+         BPL GOODMLEN
+         LDA PLAYPTR+1
+         JSR PRINTHEX
+         LDA PLAYPTR+2
+         JSR PRINTHEX
+         BRK                 ;META OVER 127 BYTES NOT SUPPORTED
+GOODMLEN LDA #META2
+         STA PHASE
+         RTS
+PHMETA2  CMP #META2
+         BNE PHTEMPO1
+         LDA TEXTEVT
+         BEQ NOTTEXT
+         LDA LYRICS
+         BEQ NOTTEXT         ;BYPASS IF USER DOESNT WANT LYRICS
+         LDA INBYTE
+         CMP #$0D
+         BEQ PRCSCR
+NOTUC    ORA #$80  ;DISPLAY IN NORMAL TEXT
+         JSR COUT
+NOTTEXT  DEC METALEN
+         LDA METALEN
+         BNE MOREMETA
+         LDA #DELTA0
+         STA PHASE
+MOREMETA RTS
+;
+PRCSCR   ORA #$80  ;PRINT CR
+         JSR COUT
+         LDA KARALOOK
+         BEQ NOKARA
+         JSR KARASCAN  ;KARAOKE LOGIC TO SCAN AHEAD ONE LINE & PRINT LINE 24
+NOKARA   JMP NOTTEXT
+;
+PRINTHEX PHA       ;CLONE OF $FDDA BUT USING $FDF0 OUTPUT
+         LSR A
+         LSR A
+         LSR A
+         LSR A
+         JSR PRNTHEX1
+         PLA
+         AND #$0F
+PRNTHEX1 ORA #$B0
+         CMP #$BA
+         BCC PRNTHEX2
+         ADC #$06
+PRNTHEX2 JMP COUT
+;
+         CHN MFF0DRVR.SC2

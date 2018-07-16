@@ -1,0 +1,325 @@
+; MFF0 PLAYER - ALSO DISPLAYS MIDI KARAOKE LYRICS
+;
+; T0 CONTAINS THE MIDI FILE DATA STRIPPED OF HEADER
+;--------------
+; MEMORY USAGE
+;--------------
+AUXMOVE  EQU $C311
+A1L      EQU $3C   ;AUXMOVE SOURCE START
+A1H      EQU $3D
+A2L      EQU $3E   ;AUXMOVE SOURCE END
+A2H      EQU $3F
+A4L      EQU $42   ;AUXMOVE DESTINATION
+A4H      EQU $43
+;
+MAINBUFR EQU $2000 ; MAIN BUFFER
+MAINEND  EQU $757F
+MAINLEN  EQU $5580
+AUX1BUFR EQU $1500 ; AUX1 BUFFER
+AUX1END  EQU $6A7F
+AUX1LEN  EQU $5580
+AUX2BUFR EQU $6A80 ; AUX2 BUFFER
+AUX2END  EQU $BFFF
+AUX2LEN  EQU $5580
+MTHDLEN  EQU $0016 ; MFF0 HEADER LENGTH (22 BYTES)
+;--------
+; LINKAGE AREA TO MFF0DRVR.OBJ
+;--------
+DRVRSTRT EQU $80F
+DRVREND  EQU $811
+DRVREOT  EQU $814
+DRVRINIT EQU $800
+DRVRMAIN EQU $803
+DRVRAUX  EQU $806
+;--------
+         ORG $75FD           ; MLI BUFFER
+         JMP MAINLINE        ; PROGRAM
+FILEBUFR DS  $400            ;MLI FILE BUFFER FOR OPEN FILE
+EOFFLAG  DFB $00             ;LOADMAIN WILL SET THIS TO 1 WHEN EOF REACHED
+USERSTOP DFB $00             ;DETECTS IF STOPPED BEFORE END OF SEQUENCE
+DEBUG    DFB $00             ;DEBUG MODE - PRINTS LOAD & PLAY RESULTS
+PATHNAME DFB 62              ;USER POKES LENGTH IN HERE ($7903)
+         ASC '/         '    ;USER POKES PATHNAME IN HERE, ENDING IN $00
+         ASC '          '
+         ASC '          '
+         ASC '          '
+         ASC '          '
+         ASC '          '
+         ASC '  '
+         DFB $00
+;
+;
+;ALGORITHM:
+;==========
+;WHILE NOT EOF
+;   LOAD MAIN, 
+;   IF EOF
+;      MODE=PLAYMAIN
+;   ELSE 
+;       TRANSFER MAIN TO AUX1
+;       LOAD MAIN,
+;       IF EOF
+;           MODE=AUX1MAIN
+;       ELSE 
+;           TRANSFER MAIN TO AUX2
+;           LOAD MAIN
+;           MODE=AUX1AUX2MAIN
+;
+;MODE PLAYMAIN
+;    PLAY MAIN
+;
+;MODE AUX1MAIN
+;    PLAY AUX1
+;    PLAY MAIN
+;
+;MODE AUX1AUX2MAIN
+;    PLAY AUX1
+;    PLAY AUX2
+;    PLAY MAIN
+;
+;========
+;MAINLINE
+;========
+MAINLINE JSR MIDIINIT
+         JSR DRVRINIT
+         JSR OPENFILE
+         JSR READHEAD
+PLAYLOOP JSR LOADMAIN
+         LDA EOFFLAG
+         BNE MAINONLY
+;
+         JSR XFERAUX1
+         JSR LOADMAIN
+         LDA EOFFLAG
+         BNE AUX1MAIN
+;
+         JSR XFERAUX2
+         JSR LOADMAIN
+         JSR A1A2MAIN
+         LDA EOFFLAG
+         BEQ PLAYLOOP
+         JMP EXITPGM
+;=======
+MIDIINIT BIT $C059           ;AN0ON
+         LDA #$00
+         STA USERSTOP
+         STA $C001 ; 80STOREON
+         STA $C056 ; HIRES OFF 
+         STA $C054 ; TEXT PAGE IN MAIN RAM
+         RTS
+;-------
+MAINONLY JSR PLAYMAIN
+         JMP EXITPGM
+;-------
+AUX1MAIN JSR PLAYAUX1
+         JSR PLAYMAIN
+         JMP EXITPGM
+;-------
+A1A2MAIN JSR PLAYAUX1
+         JSR PLAYAUX2
+         JSR PLAYMAIN
+         RTS
+;-------
+EXITPGM  JSR CLOSEFIL
+         RTS
+;-------------------
+;==END OF MAINLINE==
+;-------------------
+;--------
+;OPENFILE
+;--------
+MLI      EQU $BF00
+OPENCMD  EQU $C8
+READCMD  EQU $CA
+CLOSECMD EQU $CC
+PRINTERR EQU $FDDA
+;
+OPENPARM DFB $03
+         DW  PATHNAME
+         DW  FILEBUFR
+OPENREF  DFB $00
+;
+RHEADPRM DFB $04
+RHEADREF DFB $00
+HDATADRS DW  MAINBUFR
+HREQLEN  DW  MTHDLEN
+HACTLEN  DW  $0000
+;
+READPARM DFB $04
+READREF  DFB $00
+DATAADRS DW  MAINBUFR
+REQLEN   DW  MAINLEN
+ACTLEN   DW  $0000
+;
+CLOSEPRM DFB $01
+CLOSEREF DFB $00
+;
+OPENFILE JSR MLI
+         DFB OPENCMD
+         DW  OPENPARM
+         BCS MLIERROR
+         LDA OPENREF
+         STA READREF
+         STA RHEADREF
+         STA CLOSEREF
+         RTS
+;
+MLIERROR JSR PRINTERR
+         BRK
+;--------
+CLOSEFIL JSR MLI
+         DFB CLOSECMD
+         DW  CLOSEPRM
+         BCS MLIERROR
+         RTS
+;--------
+LOADMAIN LDA USERSTOP
+         BEQ LOADMAI1
+         RTS
+LOADMAI1 JSR MLI
+         DFB READCMD
+         DW  READPARM
+         BCC GOODREAD        ;NO MLI ERROR
+         CMP #$4C  ; DID WE READ PAST EOF?
+         BEQ MARKEOF
+         BNE MLIERROR
+GOODREAD LDA DEBUG
+         BEQ SKIP1
+         LDA #'R'
+         JSR $FDF0
+         LDA ACTLEN+1
+         JSR $FDDA
+         LDA ACTLEN
+         JSR $FDDA
+SKIP1    LDA REQLEN          ;COMPARE ACTUAL LEN TO REQUESTED LEN
+         CMP ACTLEN          ;TO CHECK FOR EOF CONDITION
+         BNE MARKEOF
+         LDA REQLEN+1
+         CMP ACTLEN+1
+         BNE MARKEOF
+         RTS
+MARKEOF  LDA #$1
+         STA EOFFLAG
+         RTS
+;--------
+READHEAD JSR MLI
+         DFB READCMD
+         DW  RHEADPRM
+         BCC GOODHEAD        ;NO MLI ERROR
+         CMP #$4C  ; DID WE READ PAST EOF?
+         BEQ MARKEOF
+         BNE MLIERROR
+GOODHEAD RTS
+;--------
+XFERAUX1 LDA #>MAINBUFR
+         STA A1L 
+         LDA #<MAINBUFR
+         STA A1H
+         LDA #>MAINEND
+         STA A2L
+         LDA #<MAINEND
+         STA A2H
+         LDA #>AUX1BUFR
+         STA A4L
+         LDA #<AUX1BUFR
+         STA A4H
+         SEC       ;MAIN TO AUX
+         JSR AUXMOVE
+         RTS
+;--------
+XFERAUX2 LDA #>MAINBUFR
+         STA A1L 
+         LDA #<MAINBUFR
+         STA A1H
+         LDA #>MAINEND
+         STA A2L
+         LDA #<MAINEND
+         STA A2H
+         LDA #>AUX2BUFR
+         STA A4L
+         LDA #<AUX2BUFR
+         STA A4H
+         SEC       ;MAIN TO AUX
+         JSR AUXMOVE
+         RTS
+;--------
+PLAYAUX1 LDA DEBUG
+         BEQ SKIP2
+         LDA #'1'
+         JSR $FDF0
+;
+SKIP2    LDA USERSTOP
+         BEQ AUX1OK
+         RTS
+AUX1OK   LDA #>AUX1BUFR
+         STA DRVRSTRT
+         LDA #<AUX1BUFR
+         STA DRVRSTRT+1
+         LDA #>AUX1END
+         CLC
+         ADC #$01
+         STA DRVREND
+         LDA #<AUX1END
+         ADC #$00
+         STA DRVREND+1
+         JSR DRVRAUX
+         LDA DRVREOT
+         BEQ AUX1DONE
+         LDA #$01
+         STA EOFFLAG
+         STA USERSTOP
+AUX1DONE RTS
+;--------
+PLAYAUX2 LDA DEBUG
+         BEQ SKIP3
+         LDA #'2'
+         JSR $FDF0
+;
+SKIP3    LDA USERSTOP
+         BEQ AUX2OK
+         RTS
+AUX2OK   LDA #>AUX2BUFR
+         STA DRVRSTRT
+         LDA #<AUX2BUFR
+         STA DRVRSTRT+1
+         LDA #>AUX2END
+         CLC
+         ADC #$01
+         STA DRVREND
+         LDA #<AUX2END
+         ADC #$00
+         STA DRVREND+1
+         JSR DRVRAUX
+         LDA DRVREOT
+         BEQ AUX2DONE
+         LDA #$01
+         STA EOFFLAG
+         STA USERSTOP
+AUX2DONE RTS
+;--------
+PLAYMAIN LDA DEBUG
+         BEQ SKIP4
+         LDA #'M'
+         JSR $FDF0
+;
+SKIP4    LDA USERSTOP
+         BEQ MAINOK
+         RTS
+MAINOK   LDA #>MAINBUFR
+         STA DRVRSTRT
+         LDA #<MAINBUFR
+         STA DRVRSTRT+1
+         LDA #>MAINEND
+         CLC
+         ADC #$01
+         STA DRVREND
+         LDA #<MAINEND
+         ADC #$00
+         STA DRVREND+1
+         JSR DRVRMAIN
+         LDA DRVREOT
+         BEQ MAINDONE
+         LDA #$01
+         STA EOFFLAG
+         STA USERSTOP
+MAINDONE RTS

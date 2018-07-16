@@ -1,0 +1,98 @@
+; MFF0DRVR.SC6
+;
+; CALL THIS IMMEDIATELY AFTER CALLING TEMPOCHG
+;
+METRONOM LDA #$03            ;DIVIDEND=60MEG SECONDS
+         STA DIVIDEND
+         LDA #$20
+         STA DIVIDEND+1
+         LDA #$00
+         STA DIVIDEND+2
+         STA DIVIDEND+3
+         LDA QUOTIENT+2      ;DIVISOR = PREVIOUS QUOTIENT
+         STA DIVISOR
+         LDA QUOTIENT+3
+         STA DIVISOR+1
+         JSR DIVISION
+         LDA QUOTIENT        ;DIVIDEND=PREV QUOTIENT
+         STA DIVIDEND
+         LDA QUOTIENT+1
+         STA DIVIDEND+1
+         LDA QUOTIENT+2
+         STA DIVIDEND+2
+         LDA QUOTIENT+3
+         STA DIVIDEND+3
+         LDA RESHI           ;DIVISOR=RESOLUTION
+         STA DIVISOR
+         LDA RESLO
+         STA DIVISOR+1
+         JSR DIVISION
+         LDA QUOTIENT+3
+         STA $50
+         LDA QUOTIENT+2
+         STA $51
+         JSR HEXDEC
+         LDA DEC3
+         STA METRTMP1
+         LDA DEC4
+         STA METRTMP2
+         LDA DEC5
+         STA METRTMP3
+         RTS
+SPEEDDEC LDA SPEED
+         STA $50
+         LDA #$00
+         STA $51
+         JSR HEXDEC
+         LDA DEC3
+         STA METRSPD1
+         LDA DEC4
+         STA METRSPD2
+         LDA DEC5
+         STA METRSPD3
+         RTS
+METRPOKE LDY #23
+         LDX #0
+METRPLOO LDA METRDISP,X
+         JSR POKE80
+         INX
+         CPX #11
+         BCC METRPLOO
+         RTS
+;========================================================
+; CONVERTS HEX IN ($50,$51) TO DECIMAL 
+; FROM APPLE PROGRAMMERS HANDBOOK P. 225
+;========================================================
+HEXDEC              LDA   #$0A
+                    STA   $53
+                    LDY   #$04
+HEXDEC0             LDX   #$10
+                    LDA   #$00
+                    STA   $52
+                    CLC   
+HEXDEC1             ROL   $50
+                    ROL   $51
+                    ROL   $52
+                    DEX   
+                    BMI   HEXDEC2
+                    LDA   $52
+                    SEC   
+                    SBC   $53
+                    BCC   HEXDEC1
+                    STA   $52
+                    BCS   HEXDEC1
+HEXDEC2             CLC   
+                    ROR   $52
+                    LDA   $52
+                    ORA   #$B0
+                    STA   DEC1,Y
+                    DEY   
+                    BPL   HEXDEC0
+                    RTS   
+DEC1                DFB $B0
+DEC2                DFB $B0
+DEC3                DFB $B0
+DEC4                DFB $B0
+DEC5                DFB $B0
+;
+         CHN MFF0DRVR.SC7

@@ -1,0 +1,128 @@
+;-------------------------------------------------------------------------
+; APPLE MIDI DRIVER THROUGH ANNUNCIATOR 0
+; COPYRIGHT 1998, ERIC RANGELL
+;-------------------------------------------------------------------------
+; THIS DRIVER IMPLEMENTS ASYNCHRONOUS SERIAL DATA TRANSMISSION 
+; THROUGH THE APPLE ANNUNCIATOR 0 OUTPUT PORT OF THE GAME CONNECTOR
+; USING 32 CYCLES PER BIT TO ACHIEVE A 31.25K MIDI BAUD RATE.
+;
+; THE OUTPUT IS INITIALIZED TO A HIGH LOGIC VOLTAGE.  WHEN IT GOES
+; LOW FOR 32 MICROSECONDS, THAT INDICATES THE START BIT OF A MIDI BYTE.
+; THEN 8 BYTES OF DATA ARE TRANSMITTED, FOLLOWED BY A HIGH STOP BIT.
+; THE DATA BYTES REPRESENT MIDI MESSAGES WHICH CAN BE INTERPRETED BY
+; ANY MUSICAL INSTRUMENT THAT IMPLEMENTS MIDI.
+;
+;-------------------------------------------------------------------------
+;
+AN0OFF   EQU $C058           ;APPLE ADDRESSES THAT CONTROL ANNUNCIATOR OUTPUTS
+AN0ON    EQU $C059
+AN1OFF   EQU $C05A
+AN1ON    EQU $C05B
+AN2OFF   EQU $C05C
+AN2ON    EQU $C05D
+AN3OFF   EQU $C05E
+AN3ON    EQU $C05F
+;
+TEMPA    DFB $00
+TEMPX    DFB $00
+;---------------------------------------------------------------------------
+XMITONE  STA TEMPA           ;SAVE A AND X REGISTERS
+         STX TEMPX
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         ASL A               ;SHIFT BIT INTO CARRY
+         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+         ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+         STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
+         TXA                 ;RESTORE ACCUMULATOR
+;
+         JSR XMITBITS        ;SEND THE BYTE OUT 
+         LDX TEMPX
+         LDA TEMPA           ;RESTORE X AND A
+         RTS
+;-----------------------------------------------------------------------
+XMITBITS BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
+         JSR DELAY22         ;6+22
+BIT0     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT1     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT2     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT3     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT4     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT5     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT6     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+BIT7     BIT AN0OFF          ;4
+         JSR DELAY22         ;6+22
+         BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
+         JSR DELAY22         ;6+22
+         RTS
+;-----------------------------------------------------------------------
+DELAY22  NOP       ;WAIT 22 CYCLES
+         NOP
+         NOP
+         NOP
+         NOP
+         NOP
+         NOP
+         NOP
+         RTS
+;----------------
+; END OF PROGRAM
+;----------------
+;==================================================
+EOF      BRK

@@ -1,0 +1,262 @@
+;MFF0DRVR.SC2
+;
+PHTEMPO1 CMP #TEMPO1
+         BNE PHTEMPO2
+         LDA INBYTE
+         CMP #$03
+         BNE STORMLEN
+         LDA #TEMPO2
+         STA PHASE
+         RTS
+PHTEMPO2 CMP #TEMPO2
+         BNE PHTEMPO3
+         LDA INBYTE
+         STA TMPOHI
+         LDA #TEMPO3
+         STA PHASE
+         RTS
+PHTEMPO3 CMP #TEMPO3
+         BNE PHTEMPO4
+         LDA INBYTE
+         STA TMPOMED
+         LDA #TEMPO4
+         STA PHASE
+         RTS
+PHTEMPO4 CMP #TEMPO4
+         BNE PHKYSIG1
+         LDA INBYTE
+         STA TMPOLO
+         LDA RESOLUTN
+         STA RESHI
+         LDA RESOLUTN+1
+         STA RESLO
+         LDA DOTMPOCG
+         BEQ TMPODONE 
+         JSR TEMPOCHG
+         JSR METRONOM
+         LDA NEWSPEED
+         CLC
+         ADC SPEEDINC
+         BMI BADSPEED
+         BEQ BADSPEED
+         STA SPEED
+         LDA PRNTSPED
+         BEQ TMPODONE 
+         LDA #$A0
+         JSR COUT
+         LDA SPEED
+         JSR PRINTHEX
+         LDA #$A0
+         JSR COUT
+TMPODONE JSR SPEEDDEC
+         JSR METRPOKE
+         LDA #DELTA0
+         STA PHASE
+         RTS
+BADSPEED LDA NEWSPEED
+         STA SPEED
+         JSR SPEEDDEC
+         JSR METRPOKE
+         LDA #DELTA0
+         STA PHASE
+         RTS
+PHKYSIG1 CMP #KEYSIG1
+         BNE PHKYSIG2
+         LDA #KEYSIG2
+         STA PHASE
+         RTS
+PHKYSIG2 CMP #KEYSIG2
+         BNE PHKYSIG3
+         LDA INBYTE
+         BEQ NOCHANGE        ;DON'T DO FOR C MAJOR/A MINOR
+         AND #$80            ;SET UPPERCASE SHARPS ($00)
+         ASL A
+         ROL A
+         STA DISPMODE        ;OR LOWERCASE FLATS ($01)
+NOCHANGE LDA #KEYSIG3
+         STA PHASE
+         LDA #$00
+         STA FLATKEY
+         LDA INBYTE
+         BPL STORSF
+         INC FLATKEY
+         EOR #$FF
+         CLC
+         ADC #$01
+STORSF   STA KEYNUMSF
+         RTS
+;
+BADPHASE JSR PRINTHEX
+         BRK
+PHKYSIG3 CMP #KEYSIG3
+         BNE BADPHASE
+         LDA #'M'
+         STA KEYSIGP4
+         LDA INBYTE
+         BNE MINORKEY
+         LDA FLATKEY
+         BNE MAJFLAT
+         LDA KEYNUMSF 
+         ASL A
+         TAX
+         LDA MAJORSHP,X
+         STA KEYSIGP2
+         INX
+         LDA MAJORSHP,X
+         STA KEYSIGP3
+         CLV
+         BVC PRNTKYSG
+MAJFLAT  LDA KEYNUMSF 
+         ASL A
+         TAX
+         LDA MAJORFLT,X
+         STA KEYSIGP2
+         INX
+         LDA MAJORFLT,X
+         STA KEYSIGP3
+         CLV
+         BVC PRNTKYSG
+MINORKEY LDA #'m'
+         STA KEYSIGP4
+         LDA FLATKEY
+         BNE MINFLAT
+         LDA KEYNUMSF 
+         ASL A
+         TAX
+         LDA MINORSHP,X
+         STA KEYSIGP2
+         INX
+         LDA MINORSHP,X
+         STA KEYSIGP3
+         CLV
+         BVC PRNTKYSG
+MINFLAT  LDA KEYNUMSF 
+         ASL A
+         TAX
+         LDA MINORFLT,X
+         STA KEYSIGP2
+         INX
+         LDA MINORFLT,X
+         STA KEYSIGP3
+         CLV
+         BVC PRNTKYSG
+PRNTKYSG LDY #16
+         LDX #74
+PRKYLP   LDA KEYSIGP1-70,X
+         JSR POKE80
+         DEX
+         CPX #69
+         BNE PRKYLP
+         LDA #DELTA0
+         STA PHASE
+         RTS
+;
+FLATKEY  DFB $00
+KEYNUMSF DFB $00
+MAJORSHP ASC 'C G D A E B F#C#'
+MAJORFLT ASC 'C F BbEbAbDbGbCb'
+MINORSHP ASC 'A E B F#C#G#D#A#'
+MINORFLT ASC 'A D G C F BbEbAb'
+;
+;--------
+;MIDIPOKE - DISPLAYS NOTE ON/OFFS USING 1ST 16 LINES OF SCREEN 
+;--------
+; A = STATUS BYTE (9X OR 8X)
+; X = 1ST DATA BYTE (NOTE NUMBER 00-7F)
+; Y = 2ND DATA BYTE (VELOCITY 00-7F)
+;--------
+MIDIPOKE STA STSBYTE         ;SAVE INPUT DATA
+         AND #$0F
+         STA MIDICHNL        ;EXTRACT CHANNEL
+         STX NOTENUM
+         STY VELOCITY
+         TXA                 ;CHECK IF NOTE IS IN RANGE OF DISPLAY
+         CMP #24
+         BCC MIDIEXIT
+         CMP #104
+         BCS MIDIEXIT
+         SEC                 ;SUBTRACT 24 TO GET OFFSET IN CHARACTER TABLE
+         SBC #24
+         STA XCOORD         
+         LDA STSBYTE
+         AND #$F0
+         CMP #$80
+         BEQ NOTEOFF         ;CHECK IF NOTE OFF
+         CMP #$90
+         BEQ NOTEON
+MIDIEXIT RTS
+NOTEON   LDA VELOCITY
+         BEQ NOTEOFF         ;IF 90 WITH VEL 0 IT IS A NOTEOFF
+         LDX XCOORD          ;NEED TO PRESERVE X UNTIL POKENOTE
+         LDA MASKDRUM        
+         BMI NOTDRUM         ;MASKDRUM FF=DISPLAY AS NORMAL NOTES
+         LDA MIDICHNL
+         CMP #$09            ;CHECK IF THIS IS A DRUM NOTE
+         BNE NOTDRUM         
+         LDA MASKDRUM
+         BEQ NOTEOFF         ;MASKDRUM 00=DON'T DISPLAY DRUM PART
+         LDA #'*'
+         STA DISPNOTE        ;MASKDRUM 01=PRINT * FOR DRUM PART
+         CLV
+         BVC POKENOTE
+NOTDRUM  LDA DISPMODE        ;CHECK IF UPPER CASE SHARP/LOWER CASE FLAT
+         BNE LCFMODE
+         LDA UCSNOTES,X
+         STA DISPNOTE
+         CLV
+         BVC POKENOTE
+LCFMODE  LDA LCFNOTES,X
+         STA DISPNOTE
+POKENOTE LDY MIDICHNL        ;VERTICAL COORD
+         LDA USEINVRS        ;PARM-WHETHER USER WANTS INVERSE DISPLAY
+         BNE INVERT
+         LDA DISPNOTE
+         JMP POKE80
+INVERT   LDA DISPNOTE
+         AND #$7F            ;INVERT ALL KEYS
+;         AND WHITEKEY,X      ;CREATE INVERSE IF IT IS A WHITE PIANO KEY
+         JMP POKE80
+NOTEOFF  LDA #' '
+         STA DISPNOTE
+         LDX XCOORD
+         JMP POKENOTE
+;
+DISPNOTE DFB $00
+STSBYTE  DFB $00
+MIDICHNL DFB $00
+NOTENUM  DFB $00
+VELOCITY DFB $00
+XCOORD   DFB $00
+;
+;                            UPPER CASE SHARPS: cCdDefFgGaAb
+;
+UCSNOTES DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+         DFB $E3,$83,$E4,$84,$E5,$E6,$86,$E7,$87,$E1,$81,$E2
+;
+;                            LOWER CASE FLATS:  CdDeEFgGaAbB
+;
+LCFNOTES DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+         DFB $83,$E4,$84,$E5,$85,$86,$E7,$87,$E1,$81,$E2,$82
+;
+;12/30/95:TOOK OUT TO SAVE SPACE
+;        THE 7F IS ANDED WITH CHAR TO MAKE IT WHITE (INVERSE)
+;
+;WHITEKEY DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;         DFB $7F,$FF,$7F,$FF,$7F,$7F,$FF,$7F,$FF,$7F,$FF,$7F
+;
+         CHN MFF0DRVR.SC3
