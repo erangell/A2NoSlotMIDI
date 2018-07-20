@@ -112,56 +112,56 @@ Current file: main.s
 00003Ar 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 00003Br 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 00003Cr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-00003Er 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+00003Er 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 000040r 1  8D rr rr             STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
 000043r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 000044r 1               ;
 000044r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 000045r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 000046r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-000048r 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000048r 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 00004Ar 1  8D rr rr             STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
 00004Dr 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 00004Er 1               ;
 00004Er 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 00004Fr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 000050r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-000052r 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000052r 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 000054r 1  8D rr rr             STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
 000057r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 000058r 1               ;
 000058r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 000059r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 00005Ar 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-00005Cr 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+00005Cr 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 00005Er 1  8D rr rr             STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
 000061r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 000062r 1               ;
 000062r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 000063r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 000064r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-000066r 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000066r 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 000068r 1  8D rr rr             STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
 00006Br 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 00006Cr 1               ;
 00006Cr 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 00006Dr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 00006Er 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-000070r 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000070r 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 000072r 1  8D rr rr             STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
 000075r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 000076r 1               ;
 000076r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 000077r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 000078r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-00007Ar 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+00007Ar 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 00007Cr 1  8D rr rr             STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
 00007Fr 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 000080r 1               ;
 000080r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
 000081r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
 000082r 1  A9 00                LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
-000084r 1  69 C0                ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000084r 1  69 58                ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
 000086r 1  8D rr rr             STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
 000089r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 00008Ar 1               ;
@@ -215,9 +215,9 @@ Current file: main.s
 0000DAr 1               TESTMSG1:
 0000DAr 1  A9 07                LDA #7
 0000DCr 1  85 D7                STA NUMBYTES
-0000DEr 1  A9 rr                LDA #>TESTDAT1
+0000DEr 1  A9 rr                LDA #<TESTDAT1
 0000E0r 1  85 CE                STA DATAPTR
-0000E2r 1  A9 rr                LDA #<TESTDAT1
+0000E2r 1  A9 rr                LDA #>TESTDAT1
 0000E4r 1  85 CF                STA DATAPTR+1
 0000E6r 1  20 rr rr             JSR SENDMSG
 0000E9r 1  60                   RTS
@@ -225,9 +225,9 @@ Current file: main.s
 0000EAr 1               TESTMSG2:
 0000EAr 1  A9 07                LDA #7
 0000ECr 1  85 D7                STA NUMBYTES
-0000EEr 1  A9 rr                LDA #>TESTDAT2
+0000EEr 1  A9 rr                LDA #<TESTDAT2
 0000F0r 1  85 CE                STA DATAPTR
-0000F2r 1  A9 rr                LDA #<TESTDAT2
+0000F2r 1  A9 rr                LDA #>TESTDAT2
 0000F4r 1  85 CF                STA DATAPTR+1
 0000F6r 1  20 rr rr             JSR SENDMSG
 0000F9r 1  60                   RTS
@@ -235,9 +235,9 @@ Current file: main.s
 0000FAr 1               QUIET:
 0000FAr 1  A9 90                LDA #$90
 0000FCr 1  85 D7                STA NUMBYTES
-0000FEr 1  A9 rr                LDA #>QUIETMSG
+0000FEr 1  A9 rr                LDA #<QUIETMSG
 000100r 1  85 CE                STA DATAPTR
-000102r 1  A9 rr                LDA #<QUIETMSG
+000102r 1  A9 rr                LDA #>QUIETMSG
 000104r 1  85 CF                STA DATAPTR+1
 000106r 1  20 rr rr             JSR SENDMSG
 000109r 1  60                   RTS

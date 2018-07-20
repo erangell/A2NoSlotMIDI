@@ -108,56 +108,56 @@ XMITONE:
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #>AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -211,9 +211,9 @@ DELAY22:
 TESTMSG1:
         LDA #7
         STA NUMBYTES
-        LDA #>TESTDAT1
-        STA DATAPTR
         LDA #<TESTDAT1
+        STA DATAPTR
+        LDA #>TESTDAT1
         STA DATAPTR+1
         JSR SENDMSG
         RTS
@@ -221,9 +221,9 @@ TESTMSG1:
 TESTMSG2:
         LDA #7
         STA NUMBYTES
-        LDA #>TESTDAT2
-        STA DATAPTR
         LDA #<TESTDAT2
+        STA DATAPTR
+        LDA #>TESTDAT2
         STA DATAPTR+1
         JSR SENDMSG
         RTS
@@ -231,9 +231,9 @@ TESTMSG2:
 QUIET:
         LDA #$90
         STA NUMBYTES
-        LDA #>QUIETMSG
-        STA DATAPTR
         LDA #<QUIETMSG
+        STA DATAPTR
+        LDA #>QUIETMSG
         STA DATAPTR+1
         JSR SENDMSG
         RTS

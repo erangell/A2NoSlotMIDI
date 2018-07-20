@@ -17,7 +17,7 @@ include make/head.mk
 
 # *** 2018-07-17
 # The name of your system or binary file to build goes here:
-PGM=ANN0DRVR.OBJ
+PGM=MIDIDRVR.OBJ
 
 # Set the config you are building for.  See these pages for details:
 #   http://cc65.github.io/cc65/doc/apple2.html#s4
