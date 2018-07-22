@@ -12,6 +12,8 @@
 ; THROUGH THE APPLE ANNUNCIATOR 0 OUTPUT PORT OF THE GAME CONNECTOR
 ; USING 32 CYCLES PER BIT TO ACHIEVE A 31.25K MIDI BAUD RATE.
 ;
+; //GS USERS NEED TO RUN THIS PROGRAM IN NORMAL SPEED MODE
+;
 ; THE OUTPUT IS INITIALIZED TO A HIGH LOGIC VOLTAGE.  WHEN IT GOES
 ; LOW FOR 32 MICROSECONDS, THAT INDICATES THE START BIT OF A MIDI BYTE.
 ; THEN 8 BYTES OF DATA ARE TRANSMITTED, FOLLOWED BY A HIGH STOP BIT.
@@ -28,11 +30,13 @@
 ;         TRANSMITTED, AND A POINTER IN $CE,CF (LO,HI) WITH THE ADDRESS OF
 ;         THE DATA BYTES, THEN CALLS THE ENTRY POINT "SENDMSG" TO TRANSMIT
 ;         THE MESSAGE.
-; $900B = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
-; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
-; $9011 = RESERVED
-; $9014 = RESERVED
-; $9017 = RESERVED
+; $900B = TURN ALL NOTES OFF
+; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
+; $9011 = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
+; $9014 = CHANGE ANNUNCIATOR - MODIFIES CODE TO USE DIFFERENT ANNUNCIATOR
+; $9017 = ANNUNCIATOR TO USE: 0-3 - only looks at least significant 2 bits
+; $9018 = CHANGE LOGIC - BIT 7
+; $901B = SET BIT 7 TO USE NEGATIVE LOGIC
 ;-------------------------------------------------------------------------
 ; Enhancements for 2018:
 ; 1. Disable interrupts during critical timing sections, preserve interrupt status
@@ -70,12 +74,14 @@ TEST1:
 TEST2:
         JMP TESTMSG2        ;SEND TEST MESSAGE 2 - C MAJOR CHORD OFF
         ;
-        ;RSRVD1:
-        ;JMP INIT
-        ;RSRVD2:
-        ;JMP INIT
-        ;RSRVD3:
-        ;JMP INIT
+CHNGANNC:
+        JMP CHGANNC         ;RECONFIGURE PROGRAM TO USE ANNUNCIATOR NUMBER IN NEXT BYTE
+ANNC2USE:
+        .byte $00           ;ONLY LEAST SIGNIFICANT 2 BITS ARE USED
+CHNGLOGC:
+        JMP CHGLOGIC        ;RECONFIGURE PROGRAM TO USE POSITIVE OR NEGATIVE LOGIC
+LOGICBYT:
+        .byte $00           ;SET HIGH BIT TO 1 TO USE NEGATIVE LOGIC, ELSE POSITIVE LOGIC (DEFAULT)
 ;---------------------------------------------------------------------------
 SAVENBYT: .byte $00             ;SAVE AREA FOR NUMBYTES
 TEMPA:    .byte $00
@@ -167,6 +173,8 @@ XMITONE:
         RTS
 ;-----------------------------------------------------------------------
 XMITBITS:
+        PHP                 ;SAVE CURRENT INTERRUPT STATUS
+        SEI                 ;MASK INTERRUPTS DURING CRITICAL TIMING SECTION
         BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
         JSR DELAY22         ;6+22
 BIT0:
@@ -195,6 +203,7 @@ BIT7:
         JSR DELAY22         ;6+22
         BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
         JSR DELAY22         ;6+22
+        PLP                 ;RESTORE SAVED INTERRUPT STATUS
         RTS
 ;-----------------------------------------------------------------------
 DELAY22:
@@ -236,6 +245,12 @@ QUIET:
         LDA #>QUIETMSG
         STA DATAPTR+1
         JSR SENDMSG
+        RTS
+;-----------------------------------------------------------------------
+CHGANNC:
+        RTS
+;-----------------------------------------------------------------------
+CHGLOGIC:
         RTS
 ;-----------------------------------------------------------------------
 TESTDAT1:
