@@ -37,10 +37,16 @@ Current file: main.s
 000000r 1               ; $900B = TURN ALL NOTES OFF
 000000r 1               ; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
 000000r 1               ; $9011 = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
+000000r 1               ;
+000000r 1               ; IF THE FOLLOWING ROUTINES ARE USED, THEY SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
+000000r 1               ; THE BINARY, THEN THE INITIALIZE ROUTINE SHOULD BE CALLED AT $9000.
+000000r 1               ;
 000000r 1               ; $9014 = CHANGE ANNUNCIATOR - MODIFIES CODE TO USE DIFFERENT ANNUNCIATOR
 000000r 1               ; $9017 = ANNUNCIATOR TO USE: 0-3 - only looks at least significant 2 bits
-000000r 1               ; $9018 = CHANGE LOGIC - BIT 7
-000000r 1               ; $901B = SET BIT 7 TO USE NEGATIVE LOGIC
+000000r 1               ; DO NOT RUN MORE THAN ONCE - BLOAD THE PROGRAM IF NEED TO CHANGE AGAIN.
+000000r 1               ;
+000000r 1               ; $9018 = CHANGE LOGIC (POSITIVE OR NEGATIVE LOGIC FOR WIRING)
+000000r 1               ; $901B = SET BIT 7 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
 000000r 1               ;-------------------------------------------------------------------------
 000000r 1               ; Enhancements for 2018:
 000000r 1               ; 1. Disable interrupts during critical timing sections, preserve interrupt status
@@ -322,65 +328,146 @@ Current file: main.s
 00017Cr 1  60                   RTS
 00017Dr 1               ;-----------------------------------------------------------------------
 00017Dr 1               CHGLOGIC:
-00017Dr 1  60                   RTS
-00017Er 1               ;-----------------------------------------------------------------------
-00017Er 1               TESTDAT1:
-00017Er 1  90 3C 40 40      .byte $90,$3C,$40,$40,$40,$43,$40
-000182r 1  40 43 40     
-000185r 1               TESTDAT2:
-000185r 1  90 3C 00 40      .byte $90,$3C,$00,$40,$00,$43,$00
-000189r 1  00 43 00     
-00018Cr 1               QUIETMSG:
-00018Cr 1  B0 78 00 B0      .byte $B0,$78,$00,$B0,$79,$00,$B0,$7B,$00
-000190r 1  79 00 B0 7B  
-000194r 1  00           
-000195r 1  B1 78 00 B1      .byte $B1,$78,$00,$B1,$79,$00,$B1,$7B,$00
-000199r 1  79 00 B1 7B  
-00019Dr 1  00           
-00019Er 1  B2 78 00 B2      .byte $B2,$78,$00,$B2,$79,$00,$B2,$7B,$00
-0001A2r 1  79 00 B2 7B  
-0001A6r 1  00           
-0001A7r 1  B3 78 00 B3      .byte $B3,$78,$00,$B3,$79,$00,$B3,$7B,$00
-0001ABr 1  79 00 B3 7B  
-0001AFr 1  00           
-0001B0r 1  B4 78 00 B4      .byte $B4,$78,$00,$B4,$79,$00,$B4,$7B,$00
-0001B4r 1  79 00 B4 7B  
-0001B8r 1  00           
-0001B9r 1  B5 78 00 B5      .byte $B5,$78,$00,$B5,$79,$00,$B5,$7B,$00
-0001BDr 1  79 00 B5 7B  
-0001C1r 1  00           
-0001C2r 1  B6 78 00 B6      .byte $B6,$78,$00,$B6,$79,$00,$B6,$7B,$00
-0001C6r 1  79 00 B6 7B  
-0001CAr 1  00           
-0001CBr 1  B7 78 00 B7      .byte $B7,$78,$00,$B7,$79,$00,$B7,$7B,$00
-0001CFr 1  79 00 B7 7B  
-0001D3r 1  00           
-0001D4r 1  B8 78 00 B8      .byte $B8,$78,$00,$B8,$79,$00,$B8,$7B,$00
-0001D8r 1  79 00 B8 7B  
-0001DCr 1  00           
-0001DDr 1  B9 78 00 B9      .byte $B9,$78,$00,$B9,$79,$00,$B9,$7B,$00
-0001E1r 1  79 00 B9 7B  
-0001E5r 1  00           
-0001E6r 1  BA 78 00 BA      .byte $BA,$78,$00,$BA,$79,$00,$BA,$7B,$00
-0001EAr 1  79 00 BA 7B  
-0001EEr 1  00           
-0001EFr 1  BB 78 00 BB      .byte $BB,$78,$00,$BB,$79,$00,$BB,$7B,$00
-0001F3r 1  79 00 BB 7B  
-0001F7r 1  00           
-0001F8r 1  BC 78 00 BC      .byte $BC,$78,$00,$BC,$79,$00,$BC,$7B,$00
-0001FCr 1  79 00 BC 7B  
-000200r 1  00           
-000201r 1  BD 78 00 BD      .byte $BD,$78,$00,$BD,$79,$00,$BD,$7B,$00
-000205r 1  79 00 BD 7B  
-000209r 1  00           
-00020Ar 1  BE 78 00 BE      .byte $BE,$78,$00,$BE,$79,$00,$BE,$7B,$00
-00020Er 1  79 00 BE 7B  
-000212r 1  00           
-000213r 1  BF 78 00 BF      .byte $BF,$78,$00,$BF,$79,$00,$BF,$7B,$00
-000217r 1  79 00 BF 7B  
-00021Br 1  00           
-00021Cr 1               ;----------------
-00021Cr 1               ; END OF PROGRAM
-00021Cr 1               ;----------------
-00021Cr 1               .endproc
-00021Cr 1               
+00017Dr 1  AD rr rr             LDA LOGICBYT
+000180r 1  10 6B                BPL POSITIVE    ; HIGH BIT DETERMINES POSITIVE OR NEGATIVE LOGIC
+000182r 1  AD rr rr             LDA MOD1+1
+000185r 1  29 FE                AND #$FE        ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
+000187r 1  09 01                ORA #$01
+000189r 1  8D rr rr             STA MOD1+1
+00018Cr 1  AD rr rr             LDA MOD2+1
+00018Fr 1  29 FE                AND #$FE
+000191r 1  09 01                ORA #$01
+000193r 1  8D rr rr             STA MOD2+1
+000196r 1  AD rr rr             LDA MOD3+1
+000199r 1  29 FE                AND #$FE
+00019Br 1  09 01                ORA #$01
+00019Dr 1  8D rr rr             STA MOD3+1
+0001A0r 1  AD rr rr             LDA MOD4+1
+0001A3r 1  29 FE                AND #$FE
+0001A5r 1  09 01                ORA #$01
+0001A7r 1  8D rr rr             STA MOD4+1
+0001AAr 1  AD rr rr             LDA MOD5+1
+0001ADr 1  29 FE                AND #$FE
+0001AFr 1  09 01                ORA #$01
+0001B1r 1  8D rr rr             STA MOD5+1
+0001B4r 1  AD rr rr             LDA MOD6+1
+0001B7r 1  29 FE                AND #$FE
+0001B9r 1  09 01                ORA #$01
+0001BBr 1  8D rr rr             STA MOD6+1
+0001BEr 1  AD rr rr             LDA MOD7+1
+0001C1r 1  29 FE                AND #$FE
+0001C3r 1  09 01                ORA #$01
+0001C5r 1  8D rr rr             STA MOD7+1
+0001C8r 1  AD rr rr             LDA MOD8+1
+0001CBr 1  29 FE                AND #$FE
+0001CDr 1  09 01                ORA #$01
+0001CFr 1  8D rr rr             STA MOD8+1
+0001D2r 1  AD rr rr             LDA MOD9+1
+0001D5r 1  29 FE                AND #$FE
+0001D7r 1  09 01                ORA #$01
+0001D9r 1  8D rr rr             STA MOD9+1
+0001DCr 1  AD rr rr             LDA MOD10+1
+0001DFr 1  29 FE                AND #$FE    ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
+0001E1r 1  8D rr rr             STA MOD10+1
+0001E4r 1  AD rr rr             LDA INIT+1
+0001E7r 1  29 FE                AND #$FE
+0001E9r 1  8D rr rr             STA INIT+1
+0001ECr 1  60                   RTS
+0001EDr 1               POSITIVE:
+0001EDr 1  AD rr rr             LDA MOD1+1
+0001F0r 1  29 FE                AND #$FE        ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
+0001F2r 1  8D rr rr             STA MOD1+1
+0001F5r 1  AD rr rr             LDA MOD2+1
+0001F8r 1  29 FE                AND #$FE
+0001FAr 1  8D rr rr             STA MOD2+1
+0001FDr 1  AD rr rr             LDA MOD3+1
+000200r 1  29 FE                AND #$FE
+000202r 1  8D rr rr             STA MOD3+1
+000205r 1  AD rr rr             LDA MOD4+1
+000208r 1  29 FE                AND #$FE
+00020Ar 1  8D rr rr             STA MOD4+1
+00020Dr 1  AD rr rr             LDA MOD5+1
+000210r 1  29 FE                AND #$FE
+000212r 1  8D rr rr             STA MOD5+1
+000215r 1  AD rr rr             LDA MOD6+1
+000218r 1  29 FE                AND #$FE
+00021Ar 1  8D rr rr             STA MOD6+1
+00021Dr 1  AD rr rr             LDA MOD7+1
+000220r 1  29 FE                AND #$FE
+000222r 1  8D rr rr             STA MOD7+1
+000225r 1  AD rr rr             LDA MOD8+1
+000228r 1  29 FE                AND #$FE
+00022Ar 1  8D rr rr             STA MOD8+1
+00022Dr 1  AD rr rr             LDA MOD9+1
+000230r 1  29 FE                AND #$FE
+000232r 1  8D rr rr             STA MOD9+1
+000235r 1  AD rr rr             LDA MOD10+1
+000238r 1  29 FE                AND #$FE
+00023Ar 1  09 01                ORA #$01    ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
+00023Cr 1  8D rr rr             STA MOD10+1
+00023Fr 1  AD rr rr             LDA INIT+1
+000242r 1  29 FE                AND #$FE
+000244r 1  09 01                ORA #$01
+000246r 1  8D rr rr             STA INIT+1
+000249r 1  60                   RTS
+00024Ar 1               ;-----------------------------------------------------------------------
+00024Ar 1               TESTDAT1:
+00024Ar 1  90 3C 40 40      .byte $90,$3C,$40,$40,$40,$43,$40
+00024Er 1  40 43 40     
+000251r 1               TESTDAT2:
+000251r 1  90 3C 00 40      .byte $90,$3C,$00,$40,$00,$43,$00
+000255r 1  00 43 00     
+000258r 1               QUIETMSG:
+000258r 1  B0 78 00 B0      .byte $B0,$78,$00,$B0,$79,$00,$B0,$7B,$00
+00025Cr 1  79 00 B0 7B  
+000260r 1  00           
+000261r 1  B1 78 00 B1      .byte $B1,$78,$00,$B1,$79,$00,$B1,$7B,$00
+000265r 1  79 00 B1 7B  
+000269r 1  00           
+00026Ar 1  B2 78 00 B2      .byte $B2,$78,$00,$B2,$79,$00,$B2,$7B,$00
+00026Er 1  79 00 B2 7B  
+000272r 1  00           
+000273r 1  B3 78 00 B3      .byte $B3,$78,$00,$B3,$79,$00,$B3,$7B,$00
+000277r 1  79 00 B3 7B  
+00027Br 1  00           
+00027Cr 1  B4 78 00 B4      .byte $B4,$78,$00,$B4,$79,$00,$B4,$7B,$00
+000280r 1  79 00 B4 7B  
+000284r 1  00           
+000285r 1  B5 78 00 B5      .byte $B5,$78,$00,$B5,$79,$00,$B5,$7B,$00
+000289r 1  79 00 B5 7B  
+00028Dr 1  00           
+00028Er 1  B6 78 00 B6      .byte $B6,$78,$00,$B6,$79,$00,$B6,$7B,$00
+000292r 1  79 00 B6 7B  
+000296r 1  00           
+000297r 1  B7 78 00 B7      .byte $B7,$78,$00,$B7,$79,$00,$B7,$7B,$00
+00029Br 1  79 00 B7 7B  
+00029Fr 1  00           
+0002A0r 1  B8 78 00 B8      .byte $B8,$78,$00,$B8,$79,$00,$B8,$7B,$00
+0002A4r 1  79 00 B8 7B  
+0002A8r 1  00           
+0002A9r 1  B9 78 00 B9      .byte $B9,$78,$00,$B9,$79,$00,$B9,$7B,$00
+0002ADr 1  79 00 B9 7B  
+0002B1r 1  00           
+0002B2r 1  BA 78 00 BA      .byte $BA,$78,$00,$BA,$79,$00,$BA,$7B,$00
+0002B6r 1  79 00 BA 7B  
+0002BAr 1  00           
+0002BBr 1  BB 78 00 BB      .byte $BB,$78,$00,$BB,$79,$00,$BB,$7B,$00
+0002BFr 1  79 00 BB 7B  
+0002C3r 1  00           
+0002C4r 1  BC 78 00 BC      .byte $BC,$78,$00,$BC,$79,$00,$BC,$7B,$00
+0002C8r 1  79 00 BC 7B  
+0002CCr 1  00           
+0002CDr 1  BD 78 00 BD      .byte $BD,$78,$00,$BD,$79,$00,$BD,$7B,$00
+0002D1r 1  79 00 BD 7B  
+0002D5r 1  00           
+0002D6r 1  BE 78 00 BE      .byte $BE,$78,$00,$BE,$79,$00,$BE,$7B,$00
+0002DAr 1  79 00 BE 7B  
+0002DEr 1  00           
+0002DFr 1  BF 78 00 BF      .byte $BF,$78,$00,$BF,$79,$00,$BF,$7B,$00
+0002E3r 1  79 00 BF 7B  
+0002E7r 1  00           
+0002E8r 1               ;----------------
+0002E8r 1               ; END OF PROGRAM
+0002E8r 1               ;----------------
+0002E8r 1               .endproc
+0002E8r 1               

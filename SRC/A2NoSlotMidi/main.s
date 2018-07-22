@@ -33,10 +33,16 @@
 ; $900B = TURN ALL NOTES OFF
 ; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
 ; $9011 = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
+;
+; IF THE FOLLOWING ROUTINES ARE USED, THEY SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
+; THE BINARY, THEN THE INITIALIZE ROUTINE SHOULD BE CALLED AT $9000.
+;
 ; $9014 = CHANGE ANNUNCIATOR - MODIFIES CODE TO USE DIFFERENT ANNUNCIATOR
 ; $9017 = ANNUNCIATOR TO USE: 0-3 - only looks at least significant 2 bits
-; $9018 = CHANGE LOGIC - BIT 7
-; $901B = SET BIT 7 TO USE NEGATIVE LOGIC
+; DO NOT RUN MORE THAN ONCE - BLOAD THE PROGRAM IF NEED TO CHANGE AGAIN.
+;
+; $9018 = CHANGE LOGIC (POSITIVE OR NEGATIVE LOGIC FOR WIRING)
+; $901B = SET BIT 7 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
 ;-------------------------------------------------------------------------
 ; Enhancements for 2018:
 ; 1. Disable interrupts during critical timing sections, preserve interrupt status
@@ -318,6 +324,87 @@ CHGANNC:
         RTS
 ;-----------------------------------------------------------------------
 CHGLOGIC:
+        LDA LOGICBYT
+        BPL POSITIVE    ; HIGH BIT DETERMINES POSITIVE OR NEGATIVE LOGIC
+        LDA MOD1+1
+        AND #$FE        ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
+        ORA #$01
+        STA MOD1+1
+        LDA MOD2+1
+        AND #$FE
+        ORA #$01
+        STA MOD2+1
+        LDA MOD3+1
+        AND #$FE
+        ORA #$01
+        STA MOD3+1
+        LDA MOD4+1
+        AND #$FE
+        ORA #$01
+        STA MOD4+1
+        LDA MOD5+1
+        AND #$FE
+        ORA #$01
+        STA MOD5+1
+        LDA MOD6+1
+        AND #$FE
+        ORA #$01
+        STA MOD6+1
+        LDA MOD7+1
+        AND #$FE
+        ORA #$01
+        STA MOD7+1
+        LDA MOD8+1
+        AND #$FE
+        ORA #$01
+        STA MOD8+1
+        LDA MOD9+1
+        AND #$FE
+        ORA #$01
+        STA MOD9+1
+        LDA MOD10+1
+        AND #$FE    ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
+        STA MOD10+1
+        LDA INIT+1
+        AND #$FE
+        STA INIT+1
+        RTS
+POSITIVE:
+        LDA MOD1+1
+        AND #$FE        ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
+        STA MOD1+1
+        LDA MOD2+1
+        AND #$FE
+        STA MOD2+1
+        LDA MOD3+1
+        AND #$FE
+        STA MOD3+1
+        LDA MOD4+1
+        AND #$FE
+        STA MOD4+1
+        LDA MOD5+1
+        AND #$FE
+        STA MOD5+1
+        LDA MOD6+1
+        AND #$FE
+        STA MOD6+1
+        LDA MOD7+1
+        AND #$FE
+        STA MOD7+1
+        LDA MOD8+1
+        AND #$FE
+        STA MOD8+1
+        LDA MOD9+1
+        AND #$FE
+        STA MOD9+1
+        LDA MOD10+1
+        AND #$FE
+        ORA #$01    ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
+        STA MOD10+1
+        LDA INIT+1
+        AND #$FE
+        ORA #$01
+        STA INIT+1
         RTS
 ;-----------------------------------------------------------------------
 TESTDAT1:
