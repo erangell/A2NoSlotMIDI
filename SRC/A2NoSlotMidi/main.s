@@ -88,94 +88,15 @@ TEMPA:    .byte $00
 TEMPX:    .byte $00
 ;ANNPAIR:  .byte  $00            ; ANNUNCIATOR NUMBER TIMES 2 (1=C05A, 2=C05C, 3=C05E)
 ;---------------------------------------------------------------------------
-INIT:
-        BIT AN0ON
+INIT:   BIT AN0ON
         RTS
 ;---------------------------------------------------------------------------
-XMITMSG:
-        LDA NUMBYTES        ;SAVE NUMBER OF BYTES
-        STA SAVENBYT        ;BECAUSE WE WILL CLOBBER IT
-        LDY #$00            ;Y WILL BE AN INDEX INTO THE DATA AREA
-XMITLOOP:
-        LDA (DATAPTR),Y     ;GET A DATA BYTE
-        JSR XMITONE
-        INY                 ;POINT TO NEXT BYTE
-        DEC NUMBYTES        ;DECREMENT COUNTER
-        LDA NUMBYTES        ;CHECK IF ZERO
-        BNE XMITLOOP        ;LOOP UNTIL DONE SENDING ALL BYTES
-        LDA SAVENBYT
-        STA NUMBYTES        ;RESTORE ORIGINAL VALUE OF NUMBYTES
-        RTS
+; CRITICAL TIMING SECTION BELOW MUST NOT CROSS A PAGE BOUNDARY
 ;---------------------------------------------------------------------------
-XMITONE:
-        STA TEMPA           ;SAVE A AND X REGISTERS
-        STX TEMPX
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        ASL A               ;SHIFT BIT INTO CARRY
-        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-        LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
-        ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-        STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
-        TXA                 ;RESTORE ACCUMULATOR
-;
-        JSR XMITBITS        ;SEND THE BYTE OUT
-        LDX TEMPX
-        LDA TEMPA           ;RESTORE X AND A
-        RTS
-;-----------------------------------------------------------------------
 XMITBITS:
         PHP                 ;SAVE CURRENT INTERRUPT STATUS
         SEI                 ;MASK INTERRUPTS DURING CRITICAL TIMING SECTION
-        BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
+MOD9:   BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
         JSR DELAY22         ;6+22
 BIT0:
         BIT AN0OFF          ;4
@@ -201,10 +122,10 @@ BIT6:
 BIT7:
         BIT AN0OFF          ;4
         JSR DELAY22         ;6+22
-        BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
+MOD10:  BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
         JSR DELAY22         ;6+22
-        PLP                 ;RESTORE SAVED INTERRUPT STATUS
-        RTS
+        PLP                 ;4        ;RESTORE SAVED INTERRUPT STATUS
+        RTS                 ;TOTAL TIME INTERRUPTS DISABLED: 324 MICROSECONDS
 ;-----------------------------------------------------------------------
 DELAY22:
         NOP       ;WAIT 22 CYCLES
@@ -215,6 +136,86 @@ DELAY22:
         NOP
         NOP
         NOP
+        RTS
+;---------------------------------------------------------------------------
+XMITMSG:
+        LDA NUMBYTES        ;SAVE NUMBER OF BYTES
+        STA SAVENBYT        ;BECAUSE WE WILL CLOBBER IT
+        LDY #$00            ;Y WILL BE AN INDEX INTO THE DATA AREA
+XMITLOOP:
+        LDA (DATAPTR),Y     ;GET A DATA BYTE
+        JSR XMITONE
+        INY                 ;POINT TO NEXT BYTE
+        DEC NUMBYTES        ;DECREMENT COUNTER
+        LDA NUMBYTES        ;CHECK IF ZERO
+        BNE XMITLOOP        ;LOOP UNTIL DONE SENDING ALL BYTES
+        LDA SAVENBYT
+        STA NUMBYTES        ;RESTORE ORIGINAL VALUE OF NUMBYTES
+        RTS
+;---------------------------------------------------------------------------
+XMITONE:
+        STA TEMPA           ;SAVE A AND X REGISTERS
+        STX TEMPX
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD1:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD2:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD3:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD4:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD5:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD6:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+MOD7:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        ASL A               ;SHIFT BIT INTO CARRY
+        TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+        LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
+MOD8:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
+        TXA                 ;RESTORE ACCUMULATOR
+;
+        JSR XMITBITS        ;SEND THE BYTE OUT
+        LDX TEMPX
+        LDA TEMPA           ;RESTORE X AND A
         RTS
 ;-----------------------------------------------------------------------
 TESTMSG1:
@@ -248,6 +249,72 @@ QUIET:
         RTS
 ;-----------------------------------------------------------------------
 CHGANNC:
+        LDA ANNC2USE
+        AND #$03        ;KEEP ONLY 2 LEAST SIGNIFICANT BITS
+        ASL             ;MULTIPLY BY 2
+        PHA             ;SAVE THIS VALUE FOR EACH MOD BEING DONE BELOW
+        CLC
+        ADC MOD1+1      ;MODIFY LOW BYTE OF EACH ANNUNCIATOR ADDRESS IN CODE ABOVE
+        STA MOD1+1
+;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD2+1
+        STA MOD2+1
+;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD3+1
+        STA MOD3+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD4+1
+        STA MOD4+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD5+1
+        STA MOD5+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD6+1
+        STA MOD6+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD7+1
+        STA MOD7+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD8+1
+        STA MOD8+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC
+        ADC MOD9+1
+        STA MOD9+1
+        ;
+        PLA             ;GET VALUE TO ADD
+        PHA             ;SAVE IT AGAIN
+        CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
+        ADC MOD10+1
+        STA MOD10+1
+;
+        PLA             ;GET VALUE TO ADD
+        CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
+        ADC INIT+1
+        STA INIT+1
         RTS
 ;-----------------------------------------------------------------------
 CHGLOGIC:
