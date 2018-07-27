@@ -10,3 +10,5 @@ Each MIDI file should have a type of $D7 and a suffix of .MID
 
 
 The program "CHANGETYPE" can be used to change the type of a file.
+
+2018-JUL-26: Tested MIDIDRVR.OBJ on real hardware - the code to change the Annunciator works.  The Negative Logic does not work yet.
