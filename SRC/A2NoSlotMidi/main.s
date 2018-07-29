@@ -1,18 +1,18 @@
 ;-------------------------------------------------------------------------
-;
+; APPLE ][ SERIES ANNUNCIATOR MIDI DRIVER
+; Copyright © 1998-2018 Eric Rangell. MIT License.
+;-------------------------------------------------------------------------;
 ;  main.s
 ;  A2NoSlotMidi
-;
-;  Created by Eric Rangell on 7/17/18.
-;-------------------------------------------------------------------------
-; APPLE MIDI DRIVER THROUGH ANNUNCIATOR 0
-; Copyright © 1998-2018 Eric Rangell. MIT License.
+;  Created by Eric Rangell on 17 JULY 2018.
+;  VERSION 1.0.1 released 26 JULY 2018
+;  VERSION 1.0.2 released 29 JULY 2018
 ;-------------------------------------------------------------------------
 ; THIS DRIVER IMPLEMENTS ASYNCHRONOUS SERIAL DATA TRANSMISSION
-; THROUGH THE APPLE ANNUNCIATOR 0 OUTPUT PORT OF THE GAME CONNECTOR
+; THROUGH AN APPLE ][ ANNUNCIATOR OUTPUT PORT OF THE GAME CONNECTOR
 ; USING 32 CYCLES PER BIT TO ACHIEVE A 31.25K MIDI BAUD RATE.
 ;
-; //GS USERS NEED TO RUN THIS PROGRAM IN NORMAL SPEED MODE
+; APPLE //GS USERS NEED TO RUN THIS PROGRAM IN NORMAL SPEED MODE (1MHZ)
 ;
 ; THE OUTPUT IS INITIALIZED TO A HIGH LOGIC VOLTAGE.  WHEN IT GOES
 ; LOW FOR 32 MICROSECONDS, THAT INDICATES THE START BIT OF A MIDI BYTE.
@@ -34,15 +34,13 @@
 ; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
 ; $9011 = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
 ;
-; IF THE FOLLOWING ROUTINES ARE USED, THEY SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
-; THE BINARY, THEN THE INITIALIZE ROUTINE SHOULD BE CALLED AT $9000.
+; IF THE FOLLOWING ROUTINE IS USED, IT SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
+; THE BINARY.  AT THE END, IT WILL CALL THE INIT ROUTINE FOR THE SELECTED ANNUNCIATOR.
 ;
 ; $9014 = CHANGE ANNUNCIATOR - MODIFIES CODE TO USE DIFFERENT ANNUNCIATOR
 ; $9017 = ANNUNCIATOR TO USE: 0-3 - only looks at least significant 2 bits
-; DO NOT RUN MORE THAN ONCE - BLOAD THE PROGRAM IF NEED TO CHANGE AGAIN.
 ;
-; $9018 = CHANGE LOGIC (POSITIVE OR NEGATIVE LOGIC FOR WIRING)
-; $901B = SET BIT 7 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
+; $9018 = SET TO 1 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
 ;-------------------------------------------------------------------------
 ; Enhancements for 2018:
 ; 1. Disable interrupts during critical timing sections, preserve interrupt status
@@ -79,22 +77,28 @@ TEST1:
         JMP TESTMSG1        ;SEND TEST MESSAGE 1 - C MAJOR CHORD ON
 TEST2:
         JMP TESTMSG2        ;SEND TEST MESSAGE 2 - C MAJOR CHORD OFF
-        ;
 CHNGANNC:
         JMP CHGANNC         ;RECONFIGURE PROGRAM TO USE ANNUNCIATOR NUMBER IN NEXT BYTE
 ANNC2USE:
         .byte $00           ;ONLY LEAST SIGNIFICANT 2 BITS ARE USED
-CHNGLOGC:
-        JMP CHGLOGIC        ;RECONFIGURE PROGRAM TO USE POSITIVE OR NEGATIVE LOGIC
-LOGICBYT:
-        .byte $00           ;SET HIGH BIT TO 1 TO USE NEGATIVE LOGIC, ELSE POSITIVE LOGIC (DEFAULT)
+NEGLOGIC:
+        .byte $00           ;SET TO 1 TO USE NEGATIVE LOGIC, OTHERWISE LEAVE 0 FOR POSITIVE LOGIC (DEFAULT). DO NOT USE ANY OTHER VALUES!
 ;---------------------------------------------------------------------------
-SAVENBYT: .byte $00             ;SAVE AREA FOR NUMBYTES
-TEMPA:    .byte $00
-TEMPX:    .byte $00
-;ANNPAIR:  .byte  $00            ; ANNUNCIATOR NUMBER TIMES 2 (1=C05A, 2=C05C, 3=C05E)
+MAJVER:     .byte $01       ;BYTES USED TO TRACK VERSION OF RELEASED EXECUTABLES
+MINVER:     .byte $02       ;NIBBLES ARE USED FOR THE VERSION NUMBER ($0102 = VERSION 1.0.2)
+ASAVE:      .byte $00       ;SAVE AREA FOR ACCUMULATOR
+SAVENBYT:   .byte $00       ;SAVE AREA FOR NUMBYTES
 ;---------------------------------------------------------------------------
-INIT:   BIT AN0ON
+INIT:   LDA NEGLOGIC
+        AND #$FE
+        BEQ OK2INIT
+        BRK                 ;ABEND IF NEGLOGIC NOT 0 OR 1
+OK2INIT:
+        LDA #<AN0ON         ;MODIFY BIT INSTRUCTION BELOW - FLIP LEAST SIGNIFICANT BIT IF NEGATIVE LOGIC
+        EOR NEGLOGIC
+        STA INITANNC+1
+INITANNC:
+        BIT AN0ON
         RTS
 ;---------------------------------------------------------------------------
 ; CRITICAL TIMING SECTION BELOW MUST NOT CROSS A PAGE BOUNDARY
@@ -102,7 +106,8 @@ INIT:   BIT AN0ON
 XMITBITS:
         PHP                 ;SAVE CURRENT INTERRUPT STATUS
         SEI                 ;MASK INTERRUPTS DURING CRITICAL TIMING SECTION
-MOD9:   BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
+STRTBIT:
+        BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
         JSR DELAY22         ;6+22
 BIT0:
         BIT AN0OFF          ;4
@@ -128,7 +133,8 @@ BIT6:
 BIT7:
         BIT AN0OFF          ;4
         JSR DELAY22         ;6+22
-MOD10:  BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
+STOPBIT:
+        BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
         JSR DELAY22         ;6+22
         PLP                 ;4        ;RESTORE SAVED INTERRUPT STATUS
         RTS                 ;TOTAL TIME INTERRUPTS DISABLED: 324 MICROSECONDS
@@ -160,13 +166,23 @@ XMITLOOP:
         RTS
 ;---------------------------------------------------------------------------
 XMITONE:
-        STA TEMPA           ;SAVE A AND X REGISTERS
-        STX TEMPX
+        STA ASAVE           ;ABEND IF NEGLOGIC NOT 0 OR 1
+        LDA NEGLOGIC
+        AND #$FE
+        BEQ OK2XMIT
+        LDA ASAVE
+        BRK
+OK2XMIT:
+        TXA                 ;SAVE X AND A ON STACK IN CASE THIS CODE GETS INTERRUPTED
+        PHA
+        LDA ASAVE
+        PHA
 ;
         ASL A               ;SHIFT BIT INTO CARRY
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD1:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -174,6 +190,7 @@ MOD1:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD2:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -181,6 +198,7 @@ MOD2:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD3:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -188,6 +206,7 @@ MOD3:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD4:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -195,6 +214,7 @@ MOD4:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD5:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -202,6 +222,7 @@ MOD5:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD6:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -209,6 +230,7 @@ MOD6:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
 MOD7:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
@@ -216,12 +238,24 @@ MOD7:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
         TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
         LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
 MOD8:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+        EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
         STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
         TXA                 ;RESTORE ACCUMULATOR
 ;
+MOD9:   LDA #<AN0OFF       ;FLIP ANNUNCIATOR ADDRESSES OF START AND STOP BITS IF USING NEGATIVE LOGIC
+        EOR NEGLOGIC
+        STA STRTBIT+1
+;
+MOD10:  LDA #<AN0ON
+        EOR NEGLOGIC
+        STA STOPBIT+1
+;
         JSR XMITBITS        ;SEND THE BYTE OUT
-        LDX TEMPX
-        LDA TEMPA           ;RESTORE X AND A
+        PLA                 ;RESTORE A AND X
+        STA ASAVE
+        PLA
+        TAX
+        LDA ASAVE
         RTS
 ;-----------------------------------------------------------------------
 TESTMSG1:
@@ -260,152 +294,68 @@ CHGANNC:
         ASL             ;MULTIPLY BY 2
         PHA             ;SAVE THIS VALUE FOR EACH MOD BEING DONE BELOW
         CLC
-        ADC MOD1+1      ;MODIFY LOW BYTE OF EACH ANNUNCIATOR ADDRESS IN CODE ABOVE
+        ADC #<AN0OFF    ;MODIFY LOW BYTE OF EACH ANNUNCIATOR ADDRESS IN CODE ABOVE
         STA MOD1+1
 ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD2+1
+        ADC #<AN0OFF
         STA MOD2+1
 ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD3+1
+        ADC #<AN0OFF
         STA MOD3+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD4+1
+        ADC #<AN0OFF
         STA MOD4+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD5+1
+        ADC #<AN0OFF
         STA MOD5+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD6+1
+        ADC #<AN0OFF
         STA MOD6+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD7+1
+        ADC #<AN0OFF
         STA MOD7+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD8+1
+        ADC #<AN0OFF
         STA MOD8+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
         CLC
-        ADC MOD9+1
+        ADC #<AN0OFF    ;START BIT IS ALWAYS LOW
         STA MOD9+1
         ;
         PLA             ;GET VALUE TO ADD
         PHA             ;SAVE IT AGAIN
-        CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
-        ADC MOD10+1
+        CLC
+        ADC #<AN0ON     ;STOP BIT IS ALWAYS HIGH
         STA MOD10+1
 ;
         PLA             ;GET VALUE TO ADD
-        CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
-        ADC INIT+1
-        STA INIT+1
-        RTS
-;-----------------------------------------------------------------------
-CHGLOGIC:
-        LDA LOGICBYT
-        BPL POSITIVE    ; HIGH BIT DETERMINES POSITIVE OR NEGATIVE LOGIC
-        LDA MOD1+1
-        AND #$FE        ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
-        ORA #$01
-        STA MOD1+1
-        LDA MOD2+1
-        AND #$FE
-        ORA #$01
-        STA MOD2+1
-        LDA MOD3+1
-        AND #$FE
-        ORA #$01
-        STA MOD3+1
-        LDA MOD4+1
-        AND #$FE
-        ORA #$01
-        STA MOD4+1
-        LDA MOD5+1
-        AND #$FE
-        ORA #$01
-        STA MOD5+1
-        LDA MOD6+1
-        AND #$FE
-        ORA #$01
-        STA MOD6+1
-        LDA MOD7+1
-        AND #$FE
-        ORA #$01
-        STA MOD7+1
-        LDA MOD8+1
-        AND #$FE
-        ORA #$01
-        STA MOD8+1
-        LDA MOD9+1
-        AND #$FE
-        ORA #$01
-        STA MOD9+1
-        LDA MOD10+1
-        AND #$FE    ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
-        STA MOD10+1
-        LDA INIT+1
-        AND #$FE
-        STA INIT+1
-        RTS
-POSITIVE:
-        LDA MOD1+1
-        AND #$FE        ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
-        STA MOD1+1
-        LDA MOD2+1
-        AND #$FE
-        STA MOD2+1
-        LDA MOD3+1
-        AND #$FE
-        STA MOD3+1
-        LDA MOD4+1
-        AND #$FE
-        STA MOD4+1
-        LDA MOD5+1
-        AND #$FE
-        STA MOD5+1
-        LDA MOD6+1
-        AND #$FE
-        STA MOD6+1
-        LDA MOD7+1
-        AND #$FE
-        STA MOD7+1
-        LDA MOD8+1
-        AND #$FE
-        STA MOD8+1
-        LDA MOD9+1
-        AND #$FE
-        STA MOD9+1
-        LDA MOD10+1
-        AND #$FE
-        ORA #$01    ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
-        STA MOD10+1
-        LDA INIT+1
-        AND #$FE
-        ORA #$01
-        STA INIT+1
-        RTS
+        CLC
+        ADC #<AN0ON     ;INITIALIZE MIDI BY SENDING HIGH "CARRIER" BIT
+        STA OK2INIT+1
+        JMP INIT        ;TURN ON THE NEWLY SELECTED ANNUNCIATOR
 ;-----------------------------------------------------------------------
 TESTDAT1:
     .byte $90,$3C,$40,$40,$40,$43,$40

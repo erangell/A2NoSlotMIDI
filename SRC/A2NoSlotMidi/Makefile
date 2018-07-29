@@ -24,7 +24,7 @@ PGM=MIDIDRVR.OBJ
 #   http://cc65.github.io/cc65/doc/apple2enh.html#s4
 #
 # Uncomment the one you want below (the first one is the default):
-#    MACHINE = apple2
+     MACHINE = apple2
 #    MACHINE = apple2-dos33
 #    MACHINE = apple2-system
 #    MACHINE = apple2-loader
@@ -39,6 +39,7 @@ PGM=MIDIDRVR.OBJ
 # Uncomment and set this to your starting address in Apple II memory
 # if necessary:
     START_ADDR = 9000
+#   ASMPARMS = "INTERRUPTS=0 \n ANNUNCIATOR=2 \n"
 
 # Set the default CPU to assemble for.  You can change this in the
 # body of a .s file using control commands like ".PC02".  Uncomment
@@ -227,6 +228,8 @@ COPYDIRS=
 # files for example.  You can generate data files.  Whatever you
 # might need.
 gen:
+
+# echo "$(ASMPARMS) > $(SRCDIRS)/ASMPARMS.txt"
 
 # For any files you generated in the gen target above, you should
 # add rules in genclean to remove those generated files when you

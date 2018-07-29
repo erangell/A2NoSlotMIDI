@@ -1,14 +1,14 @@
 Modules list:
 -------------
 main.o:
-    CODE              Offs = 000000   Size = 0002E8
+    CODE              Offs = 000000   Size = 000259
 
 
 Segment list:
 -------------
 Name                  Start   End     Size
 --------------------------------------------
-CODE                  009000  0092E7  0002E8
+CODE                  009000  009258  000259
 
 
 Exports list:

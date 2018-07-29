@@ -3,20 +3,20 @@ Main file   : main.s
 Current file: main.s
 
 000000r 1               ;-------------------------------------------------------------------------
-000000r 1               ;
+000000r 1               ; APPLE ][ SERIES ANNUNCIATOR MIDI DRIVER
+000000r 1               ; Copyright © 1998-2018 Eric Rangell. MIT License.
+000000r 1               ;-------------------------------------------------------------------------;
 000000r 1               ;  main.s
 000000r 1               ;  A2NoSlotMidi
-000000r 1               ;
-000000r 1               ;  Created by Eric Rangell on 7/17/18.
-000000r 1               ;-------------------------------------------------------------------------
-000000r 1               ; APPLE MIDI DRIVER THROUGH ANNUNCIATOR 0
-000000r 1               ; Copyright © 1998-2018 Eric Rangell. MIT License.
+000000r 1               ;  Created by Eric Rangell on 17 JULY 2018.
+000000r 1               ;  VERSION 1.0.1 released 26 JULY 2018
+000000r 1               ;  VERSION 1.0.2 released 29 JULY 2018
 000000r 1               ;-------------------------------------------------------------------------
 000000r 1               ; THIS DRIVER IMPLEMENTS ASYNCHRONOUS SERIAL DATA TRANSMISSION
-000000r 1               ; THROUGH THE APPLE ANNUNCIATOR 0 OUTPUT PORT OF THE GAME CONNECTOR
+000000r 1               ; THROUGH AN APPLE ][ ANNUNCIATOR OUTPUT PORT OF THE GAME CONNECTOR
 000000r 1               ; USING 32 CYCLES PER BIT TO ACHIEVE A 31.25K MIDI BAUD RATE.
 000000r 1               ;
-000000r 1               ; //GS USERS NEED TO RUN THIS PROGRAM IN NORMAL SPEED MODE
+000000r 1               ; APPLE //GS USERS NEED TO RUN THIS PROGRAM IN NORMAL SPEED MODE (1MHZ)
 000000r 1               ;
 000000r 1               ; THE OUTPUT IS INITIALIZED TO A HIGH LOGIC VOLTAGE.  WHEN IT GOES
 000000r 1               ; LOW FOR 32 MICROSECONDS, THAT INDICATES THE START BIT OF A MIDI BYTE.
@@ -38,15 +38,13 @@ Current file: main.s
 000000r 1               ; $900E = SEND A TEST MESSAGE - C MAJOR CHORD NOTE ONS
 000000r 1               ; $9011 = SEND A TEST MESSAGE - C MAJOR CHORD NOTE OFFS
 000000r 1               ;
-000000r 1               ; IF THE FOLLOWING ROUTINES ARE USED, THEY SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
-000000r 1               ; THE BINARY, THEN THE INITIALIZE ROUTINE SHOULD BE CALLED AT $9000.
+000000r 1               ; IF THE FOLLOWING ROUTINE IS USED, IT SHOULD BE CALLED IMMEDIATELY AFTER BLOADING
+000000r 1               ; THE BINARY.  AT THE END, IT WILL CALL THE INIT ROUTINE FOR THE SELECTED ANNUNCIATOR.
 000000r 1               ;
 000000r 1               ; $9014 = CHANGE ANNUNCIATOR - MODIFIES CODE TO USE DIFFERENT ANNUNCIATOR
 000000r 1               ; $9017 = ANNUNCIATOR TO USE: 0-3 - only looks at least significant 2 bits
-000000r 1               ; DO NOT RUN MORE THAN ONCE - BLOAD THE PROGRAM IF NEED TO CHANGE AGAIN.
 000000r 1               ;
-000000r 1               ; $9018 = CHANGE LOGIC (POSITIVE OR NEGATIVE LOGIC FOR WIRING)
-000000r 1               ; $901B = SET BIT 7 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
+000000r 1               ; $9018 = SET TO 1 TO USE NEGATIVE LOGIC (ONLY ONE INVERTER IN THE MIDI CIRCUIT)
 000000r 1               ;-------------------------------------------------------------------------
 000000r 1               ; Enhancements for 2018:
 000000r 1               ; 1. Disable interrupts during critical timing sections, preserve interrupt status
@@ -83,391 +81,343 @@ Current file: main.s
 00000Er 1  4C rr rr             JMP TESTMSG1        ;SEND TEST MESSAGE 1 - C MAJOR CHORD ON
 000011r 1               TEST2:
 000011r 1  4C rr rr             JMP TESTMSG2        ;SEND TEST MESSAGE 2 - C MAJOR CHORD OFF
-000014r 1                       ;
 000014r 1               CHNGANNC:
 000014r 1  4C rr rr             JMP CHGANNC         ;RECONFIGURE PROGRAM TO USE ANNUNCIATOR NUMBER IN NEXT BYTE
 000017r 1               ANNC2USE:
 000017r 1  00                   .byte $00           ;ONLY LEAST SIGNIFICANT 2 BITS ARE USED
-000018r 1               CHNGLOGC:
-000018r 1  4C rr rr             JMP CHGLOGIC        ;RECONFIGURE PROGRAM TO USE POSITIVE OR NEGATIVE LOGIC
-00001Br 1               LOGICBYT:
-00001Br 1  00                   .byte $00           ;SET HIGH BIT TO 1 TO USE NEGATIVE LOGIC, ELSE POSITIVE LOGIC (DEFAULT)
-00001Cr 1               ;---------------------------------------------------------------------------
-00001Cr 1  00           SAVENBYT: .byte $00             ;SAVE AREA FOR NUMBYTES
-00001Dr 1  00           TEMPA:    .byte $00
-00001Er 1  00           TEMPX:    .byte $00
-00001Fr 1               ;ANNPAIR:  .byte  $00            ; ANNUNCIATOR NUMBER TIMES 2 (1=C05A, 2=C05C, 3=C05E)
-00001Fr 1               ;---------------------------------------------------------------------------
-00001Fr 1  2C 59 C0     INIT:   BIT AN0ON
-000022r 1  60                   RTS
-000023r 1               ;---------------------------------------------------------------------------
-000023r 1               ; CRITICAL TIMING SECTION BELOW MUST NOT CROSS A PAGE BOUNDARY
-000023r 1               ;---------------------------------------------------------------------------
-000023r 1               XMITBITS:
-000023r 1  08                   PHP                 ;SAVE CURRENT INTERRUPT STATUS
-000024r 1  78                   SEI                 ;MASK INTERRUPTS DURING CRITICAL TIMING SECTION
-000025r 1  2C 58 C0     MOD9:   BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
-000028r 1  20 rr rr             JSR DELAY22         ;6+22
-00002Br 1               BIT0:
-00002Br 1  2C 58 C0             BIT AN0OFF          ;4
-00002Er 1  20 rr rr             JSR DELAY22         ;6+22
-000031r 1               BIT1:
-000031r 1  2C 58 C0             BIT AN0OFF          ;4
-000034r 1  20 rr rr             JSR DELAY22         ;6+22
-000037r 1               BIT2:
-000037r 1  2C 58 C0             BIT AN0OFF          ;4
-00003Ar 1  20 rr rr             JSR DELAY22         ;6+22
-00003Dr 1               BIT3:
-00003Dr 1  2C 58 C0             BIT AN0OFF          ;4
-000040r 1  20 rr rr             JSR DELAY22         ;6+22
-000043r 1               BIT4:
-000043r 1  2C 58 C0             BIT AN0OFF          ;4
-000046r 1  20 rr rr             JSR DELAY22         ;6+22
-000049r 1               BIT5:
-000049r 1  2C 58 C0             BIT AN0OFF          ;4
-00004Cr 1  20 rr rr             JSR DELAY22         ;6+22
-00004Fr 1               BIT6:
-00004Fr 1  2C 58 C0             BIT AN0OFF          ;4
-000052r 1  20 rr rr             JSR DELAY22         ;6+22
-000055r 1               BIT7:
-000055r 1  2C 58 C0             BIT AN0OFF          ;4
-000058r 1  20 rr rr             JSR DELAY22         ;6+22
-00005Br 1  2C 59 C0     MOD10:  BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
-00005Er 1  20 rr rr             JSR DELAY22         ;6+22
-000061r 1  28                   PLP                 ;4        ;RESTORE SAVED INTERRUPT STATUS
-000062r 1  60                   RTS                 ;TOTAL TIME INTERRUPTS DISABLED: 324 MICROSECONDS
-000063r 1               ;-----------------------------------------------------------------------
-000063r 1               DELAY22:
-000063r 1  EA                   NOP       ;WAIT 22 CYCLES
-000064r 1  EA                   NOP
-000065r 1  EA                   NOP
-000066r 1  EA                   NOP
-000067r 1  EA                   NOP
-000068r 1  EA                   NOP
-000069r 1  EA                   NOP
-00006Ar 1  EA                   NOP
-00006Br 1  60                   RTS
-00006Cr 1               ;---------------------------------------------------------------------------
-00006Cr 1               XMITMSG:
-00006Cr 1  A5 D7                LDA NUMBYTES        ;SAVE NUMBER OF BYTES
-00006Er 1  8D rr rr             STA SAVENBYT        ;BECAUSE WE WILL CLOBBER IT
-000071r 1  A0 00                LDY #$00            ;Y WILL BE AN INDEX INTO THE DATA AREA
-000073r 1               XMITLOOP:
-000073r 1  B1 CE                LDA (DATAPTR),Y     ;GET A DATA BYTE
-000075r 1  20 rr rr             JSR XMITONE
-000078r 1  C8                   INY                 ;POINT TO NEXT BYTE
-000079r 1  C6 D7                DEC NUMBYTES        ;DECREMENT COUNTER
-00007Br 1  A5 D7                LDA NUMBYTES        ;CHECK IF ZERO
-00007Dr 1  D0 F4                BNE XMITLOOP        ;LOOP UNTIL DONE SENDING ALL BYTES
-00007Fr 1  AD rr rr             LDA SAVENBYT
-000082r 1  85 D7                STA NUMBYTES        ;RESTORE ORIGINAL VALUE OF NUMBYTES
-000084r 1  60                   RTS
-000085r 1               ;---------------------------------------------------------------------------
-000085r 1               XMITONE:
-000085r 1  8D rr rr             STA TEMPA           ;SAVE A AND X REGISTERS
-000088r 1  8E rr rr             STX TEMPX
-00008Br 1               ;
-00008Br 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-00008Cr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-00008Dr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-00008Fr 1  69 58        MOD1:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-000091r 1  8D rr rr             STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
-000094r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-000095r 1               ;
-000095r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-000096r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-000097r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-000099r 1  69 58        MOD2:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-00009Br 1  8D rr rr             STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
-00009Er 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-00009Fr 1               ;
-00009Fr 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000A0r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000A1r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-0000A3r 1  69 58        MOD3:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000A5r 1  8D rr rr             STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
-0000A8r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-0000A9r 1               ;
-0000A9r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000AAr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000ABr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-0000ADr 1  69 58        MOD4:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000AFr 1  8D rr rr             STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
-0000B2r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-0000B3r 1               ;
-0000B3r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000B4r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000B5r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-0000B7r 1  69 58        MOD5:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000B9r 1  8D rr rr             STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
-0000BCr 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-0000BDr 1               ;
-0000BDr 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000BEr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000BFr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-0000C1r 1  69 58        MOD6:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000C3r 1  8D rr rr             STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
-0000C6r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-0000C7r 1               ;
-0000C7r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000C8r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000C9r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
-0000CBr 1  69 58        MOD7:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000CDr 1  8D rr rr             STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
-0000D0r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
-0000D1r 1               ;
-0000D1r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
-0000D2r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
-0000D3r 1  A9 00                LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
-0000D5r 1  69 58        MOD8:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
-0000D7r 1  8D rr rr             STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
+000018r 1               NEGLOGIC:
+000018r 1  00                   .byte $00           ;SET TO 1 TO USE NEGATIVE LOGIC, OTHERWISE LEAVE 0 FOR POSITIVE LOGIC (DEFAULT). DO NOT USE ANY OTHER VALUES!
+000019r 1               ;---------------------------------------------------------------------------
+000019r 1  01           MAJVER:     .byte $01       ;BYTES USED TO TRACK VERSION OF RELEASED EXECUTABLES
+00001Ar 1  02           MINVER:     .byte $02       ;NIBBLES ARE USED FOR THE VERSION NUMBER ($0102 = VERSION 1.0.2)
+00001Br 1  00           ASAVE:      .byte $00       ;SAVE AREA FOR ACCUMULATOR
+00001Cr 1  00           SAVENBYT:   .byte $00       ;SAVE AREA FOR NUMBYTES
+00001Dr 1               ;---------------------------------------------------------------------------
+00001Dr 1  AD rr rr     INIT:   LDA NEGLOGIC
+000020r 1  29 FE                AND #$FE
+000022r 1  F0 01                BEQ OK2INIT
+000024r 1  00                   BRK                 ;ABEND IF NEGLOGIC NOT 0 OR 1
+000025r 1               OK2INIT:
+000025r 1  A9 59                LDA #<AN0ON         ;MODIFY BIT INSTRUCTION BELOW - FLIP LEAST SIGNIFICANT BIT IF NEGATIVE LOGIC
+000027r 1  4D rr rr             EOR NEGLOGIC
+00002Ar 1  8D rr rr             STA INITANNC+1
+00002Dr 1               INITANNC:
+00002Dr 1  2C 59 C0             BIT AN0ON
+000030r 1  60                   RTS
+000031r 1               ;---------------------------------------------------------------------------
+000031r 1               ; CRITICAL TIMING SECTION BELOW MUST NOT CROSS A PAGE BOUNDARY
+000031r 1               ;---------------------------------------------------------------------------
+000031r 1               XMITBITS:
+000031r 1  08                   PHP                 ;SAVE CURRENT INTERRUPT STATUS
+000032r 1  78                   SEI                 ;MASK INTERRUPTS DURING CRITICAL TIMING SECTION
+000033r 1               STRTBIT:
+000033r 1  2C 58 C0             BIT AN0OFF          ;4 CYCLES - TRANSMIT START BIT - ALWAYS LOW
+000036r 1  20 rr rr             JSR DELAY22         ;6+22
+000039r 1               BIT0:
+000039r 1  2C 58 C0             BIT AN0OFF          ;4
+00003Cr 1  20 rr rr             JSR DELAY22         ;6+22
+00003Fr 1               BIT1:
+00003Fr 1  2C 58 C0             BIT AN0OFF          ;4
+000042r 1  20 rr rr             JSR DELAY22         ;6+22
+000045r 1               BIT2:
+000045r 1  2C 58 C0             BIT AN0OFF          ;4
+000048r 1  20 rr rr             JSR DELAY22         ;6+22
+00004Br 1               BIT3:
+00004Br 1  2C 58 C0             BIT AN0OFF          ;4
+00004Er 1  20 rr rr             JSR DELAY22         ;6+22
+000051r 1               BIT4:
+000051r 1  2C 58 C0             BIT AN0OFF          ;4
+000054r 1  20 rr rr             JSR DELAY22         ;6+22
+000057r 1               BIT5:
+000057r 1  2C 58 C0             BIT AN0OFF          ;4
+00005Ar 1  20 rr rr             JSR DELAY22         ;6+22
+00005Dr 1               BIT6:
+00005Dr 1  2C 58 C0             BIT AN0OFF          ;4
+000060r 1  20 rr rr             JSR DELAY22         ;6+22
+000063r 1               BIT7:
+000063r 1  2C 58 C0             BIT AN0OFF          ;4
+000066r 1  20 rr rr             JSR DELAY22         ;6+22
+000069r 1               STOPBIT:
+000069r 1  2C 59 C0             BIT AN0ON           ;4        ;TRANSMIT STOP BIT - ALWAYS HIGH
+00006Cr 1  20 rr rr             JSR DELAY22         ;6+22
+00006Fr 1  28                   PLP                 ;4        ;RESTORE SAVED INTERRUPT STATUS
+000070r 1  60                   RTS                 ;TOTAL TIME INTERRUPTS DISABLED: 324 MICROSECONDS
+000071r 1               ;-----------------------------------------------------------------------
+000071r 1               DELAY22:
+000071r 1  EA                   NOP       ;WAIT 22 CYCLES
+000072r 1  EA                   NOP
+000073r 1  EA                   NOP
+000074r 1  EA                   NOP
+000075r 1  EA                   NOP
+000076r 1  EA                   NOP
+000077r 1  EA                   NOP
+000078r 1  EA                   NOP
+000079r 1  60                   RTS
+00007Ar 1               ;---------------------------------------------------------------------------
+00007Ar 1               XMITMSG:
+00007Ar 1  A5 D7                LDA NUMBYTES        ;SAVE NUMBER OF BYTES
+00007Cr 1  8D rr rr             STA SAVENBYT        ;BECAUSE WE WILL CLOBBER IT
+00007Fr 1  A0 00                LDY #$00            ;Y WILL BE AN INDEX INTO THE DATA AREA
+000081r 1               XMITLOOP:
+000081r 1  B1 CE                LDA (DATAPTR),Y     ;GET A DATA BYTE
+000083r 1  20 rr rr             JSR XMITONE
+000086r 1  C8                   INY                 ;POINT TO NEXT BYTE
+000087r 1  C6 D7                DEC NUMBYTES        ;DECREMENT COUNTER
+000089r 1  A5 D7                LDA NUMBYTES        ;CHECK IF ZERO
+00008Br 1  D0 F4                BNE XMITLOOP        ;LOOP UNTIL DONE SENDING ALL BYTES
+00008Dr 1  AD rr rr             LDA SAVENBYT
+000090r 1  85 D7                STA NUMBYTES        ;RESTORE ORIGINAL VALUE OF NUMBYTES
+000092r 1  60                   RTS
+000093r 1               ;---------------------------------------------------------------------------
+000093r 1               XMITONE:
+000093r 1  8D rr rr             STA ASAVE           ;ABEND IF NEGLOGIC NOT 0 OR 1
+000096r 1  AD rr rr             LDA NEGLOGIC
+000099r 1  29 FE                AND #$FE
+00009Br 1  F0 04                BEQ OK2XMIT
+00009Dr 1  AD rr rr             LDA ASAVE
+0000A0r 1  00                   BRK
+0000A1r 1               OK2XMIT:
+0000A1r 1  8A                   TXA                 ;SAVE X AND A ON STACK IN CASE THIS CODE GETS INTERRUPTED
+0000A2r 1  48                   PHA
+0000A3r 1  AD rr rr             LDA ASAVE
+0000A6r 1  48                   PHA
+0000A7r 1               ;
+0000A7r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000A8r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000A9r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000ABr 1  69 58        MOD1:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000ADr 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000B0r 1  8D rr rr             STA BIT7+1          ;MODIFY THE XMITBITS SUBROUTINE
+0000B3r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+0000B4r 1               ;
+0000B4r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000B5r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000B6r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000B8r 1  69 58        MOD2:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000BAr 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000BDr 1  8D rr rr             STA BIT6+1          ;MODIFY THE XMITBITS SUBROUTINE
+0000C0r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+0000C1r 1               ;
+0000C1r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000C2r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000C3r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000C5r 1  69 58        MOD3:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000C7r 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000CAr 1  8D rr rr             STA BIT5+1          ;MODIFY THE XMITBITS SUBROUTINE
+0000CDr 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+0000CEr 1               ;
+0000CEr 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000CFr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000D0r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000D2r 1  69 58        MOD4:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000D4r 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000D7r 1  8D rr rr             STA BIT4+1          ;MODIFY THE XMITBITS SUBROUTINE
 0000DAr 1  8A                   TXA                 ;RESTORE ACCUMULATOR
 0000DBr 1               ;
-0000DBr 1  20 rr rr             JSR XMITBITS        ;SEND THE BYTE OUT
-0000DEr 1  AE rr rr             LDX TEMPX
-0000E1r 1  AD rr rr             LDA TEMPA           ;RESTORE X AND A
-0000E4r 1  60                   RTS
-0000E5r 1               ;-----------------------------------------------------------------------
-0000E5r 1               TESTMSG1:
-0000E5r 1  A9 07                LDA #7
-0000E7r 1  85 D7                STA NUMBYTES
-0000E9r 1  A9 rr                LDA #<TESTDAT1
-0000EBr 1  85 CE                STA DATAPTR
-0000EDr 1  A9 rr                LDA #>TESTDAT1
-0000EFr 1  85 CF                STA DATAPTR+1
-0000F1r 1  20 rr rr             JSR SENDMSG
-0000F4r 1  60                   RTS
-0000F5r 1               ;-----------------------------------------------------------------------
-0000F5r 1               TESTMSG2:
-0000F5r 1  A9 07                LDA #7
-0000F7r 1  85 D7                STA NUMBYTES
-0000F9r 1  A9 rr                LDA #<TESTDAT2
-0000FBr 1  85 CE                STA DATAPTR
-0000FDr 1  A9 rr                LDA #>TESTDAT2
-0000FFr 1  85 CF                STA DATAPTR+1
-000101r 1  20 rr rr             JSR SENDMSG
-000104r 1  60                   RTS
-000105r 1               ;-----------------------------------------------------------------------
-000105r 1               QUIET:
-000105r 1  A9 90                LDA #$90
-000107r 1  85 D7                STA NUMBYTES
-000109r 1  A9 rr                LDA #<QUIETMSG
-00010Br 1  85 CE                STA DATAPTR
-00010Dr 1  A9 rr                LDA #>QUIETMSG
-00010Fr 1  85 CF                STA DATAPTR+1
-000111r 1  20 rr rr             JSR SENDMSG
-000114r 1  60                   RTS
-000115r 1               ;-----------------------------------------------------------------------
-000115r 1               CHGANNC:
-000115r 1  AD rr rr             LDA ANNC2USE
-000118r 1  29 03                AND #$03        ;KEEP ONLY 2 LEAST SIGNIFICANT BITS
-00011Ar 1  0A                   ASL             ;MULTIPLY BY 2
-00011Br 1  48                   PHA             ;SAVE THIS VALUE FOR EACH MOD BEING DONE BELOW
-00011Cr 1  18                   CLC
-00011Dr 1  6D rr rr             ADC MOD1+1      ;MODIFY LOW BYTE OF EACH ANNUNCIATOR ADDRESS IN CODE ABOVE
-000120r 1  8D rr rr             STA MOD1+1
-000123r 1               ;
-000123r 1  68                   PLA             ;GET VALUE TO ADD
-000124r 1  48                   PHA             ;SAVE IT AGAIN
-000125r 1  18                   CLC
-000126r 1  6D rr rr             ADC MOD2+1
-000129r 1  8D rr rr             STA MOD2+1
-00012Cr 1               ;
-00012Cr 1  68                   PLA             ;GET VALUE TO ADD
-00012Dr 1  48                   PHA             ;SAVE IT AGAIN
-00012Er 1  18                   CLC
-00012Fr 1  6D rr rr             ADC MOD3+1
-000132r 1  8D rr rr             STA MOD3+1
-000135r 1                       ;
-000135r 1  68                   PLA             ;GET VALUE TO ADD
-000136r 1  48                   PHA             ;SAVE IT AGAIN
-000137r 1  18                   CLC
-000138r 1  6D rr rr             ADC MOD4+1
-00013Br 1  8D rr rr             STA MOD4+1
-00013Er 1                       ;
-00013Er 1  68                   PLA             ;GET VALUE TO ADD
-00013Fr 1  48                   PHA             ;SAVE IT AGAIN
-000140r 1  18                   CLC
-000141r 1  6D rr rr             ADC MOD5+1
-000144r 1  8D rr rr             STA MOD5+1
-000147r 1                       ;
-000147r 1  68                   PLA             ;GET VALUE TO ADD
-000148r 1  48                   PHA             ;SAVE IT AGAIN
-000149r 1  18                   CLC
-00014Ar 1  6D rr rr             ADC MOD6+1
-00014Dr 1  8D rr rr             STA MOD6+1
-000150r 1                       ;
-000150r 1  68                   PLA             ;GET VALUE TO ADD
-000151r 1  48                   PHA             ;SAVE IT AGAIN
-000152r 1  18                   CLC
-000153r 1  6D rr rr             ADC MOD7+1
-000156r 1  8D rr rr             STA MOD7+1
-000159r 1                       ;
-000159r 1  68                   PLA             ;GET VALUE TO ADD
-00015Ar 1  48                   PHA             ;SAVE IT AGAIN
-00015Br 1  18                   CLC
-00015Cr 1  6D rr rr             ADC MOD8+1
-00015Fr 1  8D rr rr             STA MOD8+1
-000162r 1                       ;
-000162r 1  68                   PLA             ;GET VALUE TO ADD
-000163r 1  48                   PHA             ;SAVE IT AGAIN
-000164r 1  18                   CLC
-000165r 1  6D rr rr             ADC MOD9+1
-000168r 1  8D rr rr             STA MOD9+1
-00016Br 1                       ;
-00016Br 1  68                   PLA             ;GET VALUE TO ADD
-00016Cr 1  48                   PHA             ;SAVE IT AGAIN
-00016Dr 1  18                   CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
-00016Er 1  6D rr rr             ADC MOD10+1
-000171r 1  8D rr rr             STA MOD10+1
-000174r 1               ;
-000174r 1  68                   PLA             ;GET VALUE TO ADD
-000175r 1  18                   CLC             ;ADD AN EXTRA 1 TO GET ANNUNCIATOR ON ADDRESS
-000176r 1  6D rr rr             ADC INIT+1
-000179r 1  8D rr rr             STA INIT+1
-00017Cr 1  60                   RTS
-00017Dr 1               ;-----------------------------------------------------------------------
-00017Dr 1               CHGLOGIC:
-00017Dr 1  AD rr rr             LDA LOGICBYT
-000180r 1  10 6B                BPL POSITIVE    ; HIGH BIT DETERMINES POSITIVE OR NEGATIVE LOGIC
-000182r 1  AD rr rr             LDA MOD1+1
-000185r 1  29 FE                AND #$FE        ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
-000187r 1  09 01                ORA #$01
-000189r 1  8D rr rr             STA MOD1+1
-00018Cr 1  AD rr rr             LDA MOD2+1
-00018Fr 1  29 FE                AND #$FE
-000191r 1  09 01                ORA #$01
-000193r 1  8D rr rr             STA MOD2+1
-000196r 1  AD rr rr             LDA MOD3+1
-000199r 1  29 FE                AND #$FE
-00019Br 1  09 01                ORA #$01
-00019Dr 1  8D rr rr             STA MOD3+1
-0001A0r 1  AD rr rr             LDA MOD4+1
-0001A3r 1  29 FE                AND #$FE
-0001A5r 1  09 01                ORA #$01
-0001A7r 1  8D rr rr             STA MOD4+1
-0001AAr 1  AD rr rr             LDA MOD5+1
-0001ADr 1  29 FE                AND #$FE
-0001AFr 1  09 01                ORA #$01
-0001B1r 1  8D rr rr             STA MOD5+1
-0001B4r 1  AD rr rr             LDA MOD6+1
-0001B7r 1  29 FE                AND #$FE
-0001B9r 1  09 01                ORA #$01
-0001BBr 1  8D rr rr             STA MOD6+1
-0001BEr 1  AD rr rr             LDA MOD7+1
-0001C1r 1  29 FE                AND #$FE
-0001C3r 1  09 01                ORA #$01
-0001C5r 1  8D rr rr             STA MOD7+1
-0001C8r 1  AD rr rr             LDA MOD8+1
-0001CBr 1  29 FE                AND #$FE
-0001CDr 1  09 01                ORA #$01
-0001CFr 1  8D rr rr             STA MOD8+1
-0001D2r 1  AD rr rr             LDA MOD9+1
-0001D5r 1  29 FE                AND #$FE
-0001D7r 1  09 01                ORA #$01
-0001D9r 1  8D rr rr             STA MOD9+1
-0001DCr 1  AD rr rr             LDA MOD10+1
-0001DFr 1  29 FE                AND #$FE    ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
-0001E1r 1  8D rr rr             STA MOD10+1
-0001E4r 1  AD rr rr             LDA INIT+1
-0001E7r 1  29 FE                AND #$FE
-0001E9r 1  8D rr rr             STA INIT+1
-0001ECr 1  60                   RTS
-0001EDr 1               POSITIVE:
-0001EDr 1  AD rr rr             LDA MOD1+1
-0001F0r 1  29 FE                AND #$FE        ;ZERO THE LEAST SIGNIFICANT BIT TO GET C058, C05A, C05C, C05E
-0001F2r 1  8D rr rr             STA MOD1+1
-0001F5r 1  AD rr rr             LDA MOD2+1
-0001F8r 1  29 FE                AND #$FE
-0001FAr 1  8D rr rr             STA MOD2+1
-0001FDr 1  AD rr rr             LDA MOD3+1
-000200r 1  29 FE                AND #$FE
-000202r 1  8D rr rr             STA MOD3+1
-000205r 1  AD rr rr             LDA MOD4+1
-000208r 1  29 FE                AND #$FE
-00020Ar 1  8D rr rr             STA MOD4+1
-00020Dr 1  AD rr rr             LDA MOD5+1
-000210r 1  29 FE                AND #$FE
-000212r 1  8D rr rr             STA MOD5+1
-000215r 1  AD rr rr             LDA MOD6+1
-000218r 1  29 FE                AND #$FE
-00021Ar 1  8D rr rr             STA MOD6+1
-00021Dr 1  AD rr rr             LDA MOD7+1
-000220r 1  29 FE                AND #$FE
-000222r 1  8D rr rr             STA MOD7+1
-000225r 1  AD rr rr             LDA MOD8+1
-000228r 1  29 FE                AND #$FE
-00022Ar 1  8D rr rr             STA MOD8+1
-00022Dr 1  AD rr rr             LDA MOD9+1
-000230r 1  29 FE                AND #$FE
-000232r 1  8D rr rr             STA MOD9+1
-000235r 1  AD rr rr             LDA MOD10+1
-000238r 1  29 FE                AND #$FE
-00023Ar 1  09 01                ORA #$01    ;SET THE LEAST SIGNIFICANT BIT TO 1 TO GET C059, C05B, C05D, C05F
-00023Cr 1  8D rr rr             STA MOD10+1
-00023Fr 1  AD rr rr             LDA INIT+1
-000242r 1  29 FE                AND #$FE
-000244r 1  09 01                ORA #$01
-000246r 1  8D rr rr             STA INIT+1
-000249r 1  60                   RTS
-00024Ar 1               ;-----------------------------------------------------------------------
-00024Ar 1               TESTDAT1:
-00024Ar 1  90 3C 40 40      .byte $90,$3C,$40,$40,$40,$43,$40
-00024Er 1  40 43 40     
-000251r 1               TESTDAT2:
-000251r 1  90 3C 00 40      .byte $90,$3C,$00,$40,$00,$43,$00
-000255r 1  00 43 00     
-000258r 1               QUIETMSG:
-000258r 1  B0 78 00 B0      .byte $B0,$78,$00,$B0,$79,$00,$B0,$7B,$00
-00025Cr 1  79 00 B0 7B  
-000260r 1  00           
-000261r 1  B1 78 00 B1      .byte $B1,$78,$00,$B1,$79,$00,$B1,$7B,$00
-000265r 1  79 00 B1 7B  
-000269r 1  00           
-00026Ar 1  B2 78 00 B2      .byte $B2,$78,$00,$B2,$79,$00,$B2,$7B,$00
-00026Er 1  79 00 B2 7B  
-000272r 1  00           
-000273r 1  B3 78 00 B3      .byte $B3,$78,$00,$B3,$79,$00,$B3,$7B,$00
-000277r 1  79 00 B3 7B  
-00027Br 1  00           
-00027Cr 1  B4 78 00 B4      .byte $B4,$78,$00,$B4,$79,$00,$B4,$7B,$00
-000280r 1  79 00 B4 7B  
-000284r 1  00           
-000285r 1  B5 78 00 B5      .byte $B5,$78,$00,$B5,$79,$00,$B5,$7B,$00
-000289r 1  79 00 B5 7B  
-00028Dr 1  00           
-00028Er 1  B6 78 00 B6      .byte $B6,$78,$00,$B6,$79,$00,$B6,$7B,$00
-000292r 1  79 00 B6 7B  
-000296r 1  00           
-000297r 1  B7 78 00 B7      .byte $B7,$78,$00,$B7,$79,$00,$B7,$7B,$00
-00029Br 1  79 00 B7 7B  
-00029Fr 1  00           
-0002A0r 1  B8 78 00 B8      .byte $B8,$78,$00,$B8,$79,$00,$B8,$7B,$00
-0002A4r 1  79 00 B8 7B  
-0002A8r 1  00           
-0002A9r 1  B9 78 00 B9      .byte $B9,$78,$00,$B9,$79,$00,$B9,$7B,$00
-0002ADr 1  79 00 B9 7B  
-0002B1r 1  00           
-0002B2r 1  BA 78 00 BA      .byte $BA,$78,$00,$BA,$79,$00,$BA,$7B,$00
-0002B6r 1  79 00 BA 7B  
-0002BAr 1  00           
-0002BBr 1  BB 78 00 BB      .byte $BB,$78,$00,$BB,$79,$00,$BB,$7B,$00
-0002BFr 1  79 00 BB 7B  
-0002C3r 1  00           
-0002C4r 1  BC 78 00 BC      .byte $BC,$78,$00,$BC,$79,$00,$BC,$7B,$00
-0002C8r 1  79 00 BC 7B  
-0002CCr 1  00           
-0002CDr 1  BD 78 00 BD      .byte $BD,$78,$00,$BD,$79,$00,$BD,$7B,$00
-0002D1r 1  79 00 BD 7B  
-0002D5r 1  00           
-0002D6r 1  BE 78 00 BE      .byte $BE,$78,$00,$BE,$79,$00,$BE,$7B,$00
-0002DAr 1  79 00 BE 7B  
-0002DEr 1  00           
-0002DFr 1  BF 78 00 BF      .byte $BF,$78,$00,$BF,$79,$00,$BF,$7B,$00
-0002E3r 1  79 00 BF 7B  
-0002E7r 1  00           
-0002E8r 1               ;----------------
-0002E8r 1               ; END OF PROGRAM
-0002E8r 1               ;----------------
-0002E8r 1               .endproc
-0002E8r 1               
+0000DBr 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000DCr 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000DDr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000DFr 1  69 58        MOD5:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000E1r 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000E4r 1  8D rr rr             STA BIT3+1          ;MODIFY THE XMITBITS SUBROUTINE
+0000E7r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+0000E8r 1               ;
+0000E8r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000E9r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000EAr 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000ECr 1  69 58        MOD6:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000EEr 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000F1r 1  8D rr rr             STA BIT2+1          ;MODIFY THE XMITBITS SUBROUTINE
+0000F4r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+0000F5r 1               ;
+0000F5r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+0000F6r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+0000F7r 1  A9 00                LDA #$00            ;ZERO OUT ACCUMULATOR FOR ADD
+0000F9r 1  69 58        MOD7:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+0000FBr 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+0000FEr 1  8D rr rr             STA BIT1+1          ;MODIFY THE XMITBITS SUBROUTINE
+000101r 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+000102r 1               ;
+000102r 1  0A                   ASL A               ;SHIFT BIT INTO CARRY
+000103r 1  AA                   TAX                 ;SAVE CURRENT IMAGE OF DATA BYTE
+000104r 1  A9 00                LDA #$00             ;ZERO OUT ACCUMULATOR FOR ADD
+000106r 1  69 58        MOD8:   ADC #<AN0OFF        ;ADD CARRY TO ANNUNCIATOR ADDRESS
+000108r 1  4D rr rr             EOR NEGLOGIC        ;FLIP ADDRESSES IF USING NEGATIVE LOGIC
+00010Br 1  8D rr rr             STA BIT0+1          ;MODIFY THE XMITBITS SUBROUTINE
+00010Er 1  8A                   TXA                 ;RESTORE ACCUMULATOR
+00010Fr 1               ;
+00010Fr 1  A9 58        MOD9:   LDA #<AN0OFF       ;FLIP ANNUNCIATOR ADDRESSES OF START AND STOP BITS IF USING NEGATIVE LOGIC
+000111r 1  4D rr rr             EOR NEGLOGIC
+000114r 1  8D rr rr             STA STRTBIT+1
+000117r 1               ;
+000117r 1  A9 59        MOD10:  LDA #<AN0ON
+000119r 1  4D rr rr             EOR NEGLOGIC
+00011Cr 1  8D rr rr             STA STOPBIT+1
+00011Fr 1               ;
+00011Fr 1  20 rr rr             JSR XMITBITS        ;SEND THE BYTE OUT
+000122r 1  68                   PLA                 ;RESTORE A AND X
+000123r 1  8D rr rr             STA ASAVE
+000126r 1  68                   PLA
+000127r 1  AA                   TAX
+000128r 1  AD rr rr             LDA ASAVE
+00012Br 1  60                   RTS
+00012Cr 1               ;-----------------------------------------------------------------------
+00012Cr 1               TESTMSG1:
+00012Cr 1  A9 07                LDA #7
+00012Er 1  85 D7                STA NUMBYTES
+000130r 1  A9 rr                LDA #<TESTDAT1
+000132r 1  85 CE                STA DATAPTR
+000134r 1  A9 rr                LDA #>TESTDAT1
+000136r 1  85 CF                STA DATAPTR+1
+000138r 1  20 rr rr             JSR SENDMSG
+00013Br 1  60                   RTS
+00013Cr 1               ;-----------------------------------------------------------------------
+00013Cr 1               TESTMSG2:
+00013Cr 1  A9 07                LDA #7
+00013Er 1  85 D7                STA NUMBYTES
+000140r 1  A9 rr                LDA #<TESTDAT2
+000142r 1  85 CE                STA DATAPTR
+000144r 1  A9 rr                LDA #>TESTDAT2
+000146r 1  85 CF                STA DATAPTR+1
+000148r 1  20 rr rr             JSR SENDMSG
+00014Br 1  60                   RTS
+00014Cr 1               ;-----------------------------------------------------------------------
+00014Cr 1               QUIET:
+00014Cr 1  A9 90                LDA #$90
+00014Er 1  85 D7                STA NUMBYTES
+000150r 1  A9 rr                LDA #<QUIETMSG
+000152r 1  85 CE                STA DATAPTR
+000154r 1  A9 rr                LDA #>QUIETMSG
+000156r 1  85 CF                STA DATAPTR+1
+000158r 1  20 rr rr             JSR SENDMSG
+00015Br 1  60                   RTS
+00015Cr 1               ;-----------------------------------------------------------------------
+00015Cr 1               CHGANNC:
+00015Cr 1  AD rr rr             LDA ANNC2USE
+00015Fr 1  29 03                AND #$03        ;KEEP ONLY 2 LEAST SIGNIFICANT BITS
+000161r 1  0A                   ASL             ;MULTIPLY BY 2
+000162r 1  48                   PHA             ;SAVE THIS VALUE FOR EACH MOD BEING DONE BELOW
+000163r 1  18                   CLC
+000164r 1  69 58                ADC #<AN0OFF    ;MODIFY LOW BYTE OF EACH ANNUNCIATOR ADDRESS IN CODE ABOVE
+000166r 1  8D rr rr             STA MOD1+1
+000169r 1               ;
+000169r 1  68                   PLA             ;GET VALUE TO ADD
+00016Ar 1  48                   PHA             ;SAVE IT AGAIN
+00016Br 1  18                   CLC
+00016Cr 1  69 58                ADC #<AN0OFF
+00016Er 1  8D rr rr             STA MOD2+1
+000171r 1               ;
+000171r 1  68                   PLA             ;GET VALUE TO ADD
+000172r 1  48                   PHA             ;SAVE IT AGAIN
+000173r 1  18                   CLC
+000174r 1  69 58                ADC #<AN0OFF
+000176r 1  8D rr rr             STA MOD3+1
+000179r 1                       ;
+000179r 1  68                   PLA             ;GET VALUE TO ADD
+00017Ar 1  48                   PHA             ;SAVE IT AGAIN
+00017Br 1  18                   CLC
+00017Cr 1  69 58                ADC #<AN0OFF
+00017Er 1  8D rr rr             STA MOD4+1
+000181r 1                       ;
+000181r 1  68                   PLA             ;GET VALUE TO ADD
+000182r 1  48                   PHA             ;SAVE IT AGAIN
+000183r 1  18                   CLC
+000184r 1  69 58                ADC #<AN0OFF
+000186r 1  8D rr rr             STA MOD5+1
+000189r 1                       ;
+000189r 1  68                   PLA             ;GET VALUE TO ADD
+00018Ar 1  48                   PHA             ;SAVE IT AGAIN
+00018Br 1  18                   CLC
+00018Cr 1  69 58                ADC #<AN0OFF
+00018Er 1  8D rr rr             STA MOD6+1
+000191r 1                       ;
+000191r 1  68                   PLA             ;GET VALUE TO ADD
+000192r 1  48                   PHA             ;SAVE IT AGAIN
+000193r 1  18                   CLC
+000194r 1  69 58                ADC #<AN0OFF
+000196r 1  8D rr rr             STA MOD7+1
+000199r 1                       ;
+000199r 1  68                   PLA             ;GET VALUE TO ADD
+00019Ar 1  48                   PHA             ;SAVE IT AGAIN
+00019Br 1  18                   CLC
+00019Cr 1  69 58                ADC #<AN0OFF
+00019Er 1  8D rr rr             STA MOD8+1
+0001A1r 1                       ;
+0001A1r 1  68                   PLA             ;GET VALUE TO ADD
+0001A2r 1  48                   PHA             ;SAVE IT AGAIN
+0001A3r 1  18                   CLC
+0001A4r 1  69 58                ADC #<AN0OFF    ;START BIT IS ALWAYS LOW
+0001A6r 1  8D rr rr             STA MOD9+1
+0001A9r 1                       ;
+0001A9r 1  68                   PLA             ;GET VALUE TO ADD
+0001AAr 1  48                   PHA             ;SAVE IT AGAIN
+0001ABr 1  18                   CLC
+0001ACr 1  69 59                ADC #<AN0ON     ;STOP BIT IS ALWAYS HIGH
+0001AEr 1  8D rr rr             STA MOD10+1
+0001B1r 1               ;
+0001B1r 1  68                   PLA             ;GET VALUE TO ADD
+0001B2r 1  18                   CLC
+0001B3r 1  69 59                ADC #<AN0ON     ;INITIALIZE MIDI BY SENDING HIGH "CARRIER" BIT
+0001B5r 1  8D rr rr             STA OK2INIT+1
+0001B8r 1  4C rr rr             JMP INIT        ;TURN ON THE NEWLY SELECTED ANNUNCIATOR
+0001BBr 1               ;-----------------------------------------------------------------------
+0001BBr 1               TESTDAT1:
+0001BBr 1  90 3C 40 40      .byte $90,$3C,$40,$40,$40,$43,$40
+0001BFr 1  40 43 40     
+0001C2r 1               TESTDAT2:
+0001C2r 1  90 3C 00 40      .byte $90,$3C,$00,$40,$00,$43,$00
+0001C6r 1  00 43 00     
+0001C9r 1               QUIETMSG:
+0001C9r 1  B0 78 00 B0      .byte $B0,$78,$00,$B0,$79,$00,$B0,$7B,$00
+0001CDr 1  79 00 B0 7B  
+0001D1r 1  00           
+0001D2r 1  B1 78 00 B1      .byte $B1,$78,$00,$B1,$79,$00,$B1,$7B,$00
+0001D6r 1  79 00 B1 7B  
+0001DAr 1  00           
+0001DBr 1  B2 78 00 B2      .byte $B2,$78,$00,$B2,$79,$00,$B2,$7B,$00
+0001DFr 1  79 00 B2 7B  
+0001E3r 1  00           
+0001E4r 1  B3 78 00 B3      .byte $B3,$78,$00,$B3,$79,$00,$B3,$7B,$00
+0001E8r 1  79 00 B3 7B  
+0001ECr 1  00           
+0001EDr 1  B4 78 00 B4      .byte $B4,$78,$00,$B4,$79,$00,$B4,$7B,$00
+0001F1r 1  79 00 B4 7B  
+0001F5r 1  00           
+0001F6r 1  B5 78 00 B5      .byte $B5,$78,$00,$B5,$79,$00,$B5,$7B,$00
+0001FAr 1  79 00 B5 7B  
+0001FEr 1  00           
+0001FFr 1  B6 78 00 B6      .byte $B6,$78,$00,$B6,$79,$00,$B6,$7B,$00
+000203r 1  79 00 B6 7B  
+000207r 1  00           
+000208r 1  B7 78 00 B7      .byte $B7,$78,$00,$B7,$79,$00,$B7,$7B,$00
+00020Cr 1  79 00 B7 7B  
+000210r 1  00           
+000211r 1  B8 78 00 B8      .byte $B8,$78,$00,$B8,$79,$00,$B8,$7B,$00
+000215r 1  79 00 B8 7B  
+000219r 1  00           
+00021Ar 1  B9 78 00 B9      .byte $B9,$78,$00,$B9,$79,$00,$B9,$7B,$00
+00021Er 1  79 00 B9 7B  
+000222r 1  00           
+000223r 1  BA 78 00 BA      .byte $BA,$78,$00,$BA,$79,$00,$BA,$7B,$00
+000227r 1  79 00 BA 7B  
+00022Br 1  00           
+00022Cr 1  BB 78 00 BB      .byte $BB,$78,$00,$BB,$79,$00,$BB,$7B,$00
+000230r 1  79 00 BB 7B  
+000234r 1  00           
+000235r 1  BC 78 00 BC      .byte $BC,$78,$00,$BC,$79,$00,$BC,$7B,$00
+000239r 1  79 00 BC 7B  
+00023Dr 1  00           
+00023Er 1  BD 78 00 BD      .byte $BD,$78,$00,$BD,$79,$00,$BD,$7B,$00
+000242r 1  79 00 BD 7B  
+000246r 1  00           
+000247r 1  BE 78 00 BE      .byte $BE,$78,$00,$BE,$79,$00,$BE,$7B,$00
+00024Br 1  79 00 BE 7B  
+00024Fr 1  00           
+000250r 1  BF 78 00 BF      .byte $BF,$78,$00,$BF,$79,$00,$BF,$7B,$00
+000254r 1  79 00 BF 7B  
+000258r 1  00           
+000259r 1               ;----------------
+000259r 1               ; END OF PROGRAM
+000259r 1               ;----------------
+000259r 1               .endproc
+000259r 1               
