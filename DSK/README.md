@@ -2,6 +2,9 @@
 
 See the SRC directory for information on how the ANN0TEST.DSK image is created.
 
+Note: An updated disk image that plays MIDI through Annunciator 2 and includes a drum program is available here:
+https://github.com/erangell/kfest2020/blob/master/hackfest/src/Apple2/ANN2MIDI2020.dsk
+
 
 If you want to play MIDI files on a different disk, rename the volume of ANN0TEST.DSK to something other than /MIDI (ex: /MIDI0), and rename the volume of the disk that contains the MIDI files to /MIDI.
 
