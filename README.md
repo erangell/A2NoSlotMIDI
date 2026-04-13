@@ -20,3 +20,5 @@ https://www.youtube.com/watch?v=UdtnXmel96o
 Source and disk images for these projects will be posted to other repositories on this account as time permits.
 
 NotebookLM analysis of the source code: https://notebooklm.google.com/notebook/a468ad2a-d651-4ba9-a654-033e2ac3cd9b
+
+Article about this project for Paleotronic Magazine: https://paleotronic.com/2020/07/05/build-a-no-slot-midi-interface-on-the-apple-game-i-o-socket/
